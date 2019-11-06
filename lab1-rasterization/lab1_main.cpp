@@ -17,6 +17,7 @@ SDL_Window* g_window = nullptr;
 // consists of positions (from positionBuffer) and color (from colorBuffer)
 // in this example.
 GLuint vertexArrayObject;
+GLuint vertexArrayObject2;
 
 // The shaderProgram combines a vertex shader (vertexShader) and a
 // fragment shader (fragmentShader) into a single GLSL program that can
@@ -56,8 +57,8 @@ void initGL()
 	const float colors[] = {
 		//   R     G     B
 		1.0f, 1.0f, 1.0f, // White
-		1.0f, 1.0f, 1.0f, // White
-		1.0f, 1.0f, 1.0f  // White
+		1.0f, 0.0f, 0.0f, // White
+		1.0f, 0.498039f, 1.0f  // White
 	};
 	// Create a handle for the vertex color buffer
 	GLuint colorBuffer;
@@ -93,7 +94,54 @@ void initGL()
 	//		   object, and then by adding a triangle to an existing VAO.
 	//////////////////////////////////////////////////////////////////////////////
 
+	const float positionsSecondTriangle[] = {
+		//	 X      Y     Z
+		0.1f,  0.5f,  1.0f, // v0
+		0.1f, 0.8f, 1.0f, // v1
+		0.0f,  0.5f, 1.0f,  // v2
 
+		1.0f,  1.0f,  1.0f, // v0
+		0.1f, 1.0f, 1.0f, // v1
+		1.0f,  0.5f, 1.0f  // v2
+	};
+
+	const float colorsSecondTriangle[] = {
+		//   R     G     B
+		0.30f, 0.30f, 1.0f, 
+		1.0f, 0.43f, 0.78f, 
+		0.81f, 0.71f, 0.23f,
+
+		0.30f, 1.0f, 1.0f,
+		1.0f, 0.43f, 0.78f,
+		0.81f, 0.71f, 0.23f
+
+		//1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f
+	};
+
+	GLuint positionSecondTriangleBuffer;
+	glGenBuffers(1, &positionSecondTriangleBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, positionSecondTriangleBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(positionsSecondTriangle), positionsSecondTriangle, GL_STATIC_DRAW);
+
+
+	GLuint colorSecondTriangleBuffer;
+	glGenBuffers(1, &colorSecondTriangleBuffer);
+	// Set the newly created buffer as the current one
+	glBindBuffer(GL_ARRAY_BUFFER, colorSecondTriangleBuffer);
+	// Send the vertex color data to the current buffer
+	glBufferData(GL_ARRAY_BUFFER, sizeof(colorsSecondTriangle), colorsSecondTriangle, GL_STATIC_DRAW);
+
+	glGenVertexArrays(1, &vertexArrayObject2);
+	glBindVertexArray(vertexArrayObject2);
+	glBindBuffer(GL_ARRAY_BUFFER, positionSecondTriangleBuffer);
+	glVertexAttribPointer(0, 3, GL_FLOAT, false /*normalized*/, 0 /*stride*/, 0 /*offset*/);
+	glBindBuffer(GL_ARRAY_BUFFER, colorSecondTriangleBuffer);
+	glVertexAttribPointer(1, 3, GL_FLOAT, false /*normalized*/, 0 /*stride*/, 0 /*offset*/);
+	
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
 
 	///////////////////////////////////////////////////////////////////////////
 	// Create shaders
@@ -188,8 +236,13 @@ void display(void)
 	glUseProgram(shaderProgram); // Set the shader program to use for this draw call
 	// Bind the vertex array object that contains all the vertex data.
 	glBindVertexArray(vertexArrayObject);
+
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+
+	glBindVertexArray(vertexArrayObject2);
 	// Submit triangles from currently bound vertex array object.
-	glDrawArrays(GL_TRIANGLES, 0, 3); // Render 1 triangle
+	glDrawArrays(GL_TRIANGLES, 0, 6); // Render 2 triangle
 
 
 	glUseProgram(0); // "unsets" the current shader program. Not really necessary.
@@ -228,7 +281,7 @@ int main(int argc, char* argv[])
 		// TASK 1: Uncomment the call to gui below to show the GUI
 		///////////////////////////////////////////////////////////////////////////
 		// Then render overlay GUI.
-		// gui();
+		gui();
 
 		// Swap front and back buffer. This frame will now been displayed.
 		SDL_GL_SwapWindow(g_window);
