@@ -31,6 +31,9 @@ GLuint shaderProgram;
 // the vertex data (in positionBuffer) and color data per vertex (in colorBuffer)
 GLuint positionBuffer, colorBuffer, indexBuffer, vertexArrayObject;
 GLuint textureBuffer;
+GLuint explotionPositionBuffer, explotionTextureBuffer, expllotionVertexArrayObject;
+GLuint explotiontexture;
+GLuint texture;
 
 
 
@@ -64,6 +67,7 @@ void initGL()
 	// Enable the attribute
 	glEnableVertexAttribArray(0);
 
+
 	///////////////////////////////////////////////////////////////////////////
 	// >>> @task 1 : Create the texture coordinates.
 	//				 Create the texture coordinates' buffer object.
@@ -93,6 +97,9 @@ void initGL()
 
 	glEnableVertexAttribArray(1);
 
+
+	
+
 	///////////////////////////////////////////////////////////////////////////
 	// Create the element array buffer object
 	///////////////////////////////////////////////////////////////////////////
@@ -120,7 +127,7 @@ void initGL()
 	int w, h, comp;
 	unsigned char* image = stbi_load("../scenes/asphalt.jpg", &w, &h, &comp, STBI_rgb_alpha);
 
-	GLuint texture;
+	
 
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
@@ -143,6 +150,68 @@ void initGL()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16.0f);
+
+
+
+	// explotion vertex array
+	glGenVertexArrays(1, &expllotionVertexArrayObject);
+	glBindVertexArray(expllotionVertexArrayObject);
+	// Explotion position buffer
+	const float explotionPositions[] = {
+		// X      Y       Z
+		5.0f, -5.0f,  -50.0f,  // v0
+		5.0f, 100.0f, -50.0f, // v1
+		-5.0f,  100.0f, -50.0f, // v2
+		-5.0f,  -5.0f,  -50.0f   // v3
+	};
+	// Create a handle for the vertex position buffer
+	glGenBuffers(1, &explotionPositionBuffer);
+	// Set the newly created buffer as the current one
+	glBindBuffer(GL_ARRAY_BUFFER, explotionPositionBuffer);
+	// Send the vetex position data to the current buffer
+	glBufferData(GL_ARRAY_BUFFER, sizeof(explotionPositions), explotionPositions, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, false /*normalized*/, 0 /*stride*/, 0 /*offset*/);
+	// Enable the attribute
+	glEnableVertexAttribArray(0);
+
+	float explotionTexcoords[] = {
+	0.0f, 0.0f, // (u,v) for v0
+	0.0f, 1.0f, // (u,v) for v1
+	1.0f, 1.0f, // (u,v) for v2
+	1.0f, 0.0f // (u,v) for v3
+	};
+
+	glGenBuffers(1, &explotionTextureBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, explotionTextureBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(explotionTexcoords), explotionTexcoords, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(1, 2, GL_FLOAT, false/*normalized*/, 0/*stride*/, 0/*offset*/);
+
+	glEnableVertexAttribArray(1);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+	int ew, eh, ecomp;
+	unsigned char* eimage = stbi_load("../scenes/explosion.png", &ew, &eh, &ecomp, STBI_rgb_alpha);
+
+	
+
+	glGenTextures(1, &explotiontexture);
+	glBindTexture(GL_TEXTURE_2D, explotiontexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ew, eh, 0, GL_RGBA, GL_UNSIGNED_BYTE, eimage);
+	free(eimage);
+	// Extend the image texture until the edge
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+
+
 }
 
 void display(void)
@@ -179,11 +248,24 @@ void display(void)
 	loc = glGetUniformLocation(shaderProgram, "cameraPosition");
 	glUniform3f(loc, camera_pan, 0, 0);
 
+	
+
 	// >>> @task 3.1
 	glActiveTexture(GL_TEXTURE0);
 	glBindVertexArray(vertexArrayObject);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+	
+	
+
+	glBindVertexArray(expllotionVertexArrayObject);
+	glBindTexture(GL_TEXTURE_2D, explotiontexture);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
+	
+	
 
 	glUseProgram(0); // "unsets" the current shader program. Not really necessary.
 }
