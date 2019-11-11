@@ -162,7 +162,7 @@ void display(void)
 	glUniform3f(loc, camera_pan, 0, 0);
 
 	// >>> @task 3.1
-
+	glActiveTexture(GL_TEXTURE0);
 	glBindVertexArray(vertexArrayObject);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
