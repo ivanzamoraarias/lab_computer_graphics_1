@@ -71,11 +71,18 @@ void initGL()
 	//				 Enable the vertex attrib array.
 	///////////////////////////////////////////////////////////////////////////
 
-	float texcoords[] = {
+	/*float texcoords[] = { // coordinates for the entire image
 	0.0f, 0.0f, // (u,v) for v0 
 	0.0f, 1.0f, // (u,v) for v1
 	1.0f, 1.0f, // (u,v) for v2
 	1.0f, 0.0f // (u,v) for v3
+	};*/
+
+	float texcoords[] = { // smaller section of the image 
+	0.0f, 0.0f,    // (u,v) for v0
+	0.0f, 15.0f,   // (u,v) for v1
+	1.0f, 15.0f,   // (u,v) for v2
+	1.0f, 0.0f     // (u,v) for v3
 	};
 
 	glGenBuffers(1, &textureBuffer);
@@ -119,9 +126,16 @@ void initGL()
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
 	free(image);
+	// Extend the image texture until the edge
+	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	// repeat texture along the polygon
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
