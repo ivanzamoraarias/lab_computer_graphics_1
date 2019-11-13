@@ -99,6 +99,12 @@ void display()
 	int w, h;
 	SDL_GetWindowSize(g_window, &w, &h);
 
+
+	vec3 cameraRight = normalize(cross(cameraDirection, worldUp));
+	vec3 cameraUp = normalize(cross(cameraRight, cameraDirection));
+
+	mat3 cameraBaseVectorsWorldSpace(cameraRight, cameraUp, -cameraDirection);
+
 	if(pp.w != old_w || pp.h != old_h)
 	{
 		SDL_SetWindowSize(g_window, pp.w, pp.h);
@@ -129,6 +135,8 @@ void display()
 	                               1.00000000f);
 	// mat4 viewMatrix = constantViewMatrix;
 
+	mat4 cameraRotation = mat4(transpose(cameraBaseVectorsWorldSpace));
+
 	mat4 viewMatrix = cameraRotation*translate(-cameraPosition);
 	
 
@@ -152,7 +160,7 @@ void display()
 
 	// Ground
 	// Task 5: Uncomment this
-	//drawGround(modelViewProjectionMatrix);
+	drawGround(modelViewProjectionMatrix);
 
 	// Fix transaltion value
 	// T[3] = vec4(0.0f, 0.0f, 5.0f, 1.0f);
