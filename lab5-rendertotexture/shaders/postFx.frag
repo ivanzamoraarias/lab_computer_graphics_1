@@ -10,6 +10,8 @@ uniform int currentEffect = 0;
 uniform int filterSize = 1;
 layout(location = 0) out vec4 fragmentColor;
 
+int squareSize = 8;
+
 
 /**
 * Helper function to sample with pixel coordinates, e.g., (511.5, 12.75)
@@ -47,6 +49,8 @@ vec3 grayscale(vec3 rgbSample);
  */
 vec3 toSepiaTone(vec3 rgbSample);
 
+vec2 mosaic(vec2 inCoord);
+
 
 
 void main()
@@ -73,7 +77,8 @@ void main()
 		fragmentColor = vec4(toSepiaTone(blur(mushrooms(gl_FragCoord.xy))), 1.0);
 		break;
 	case 6:
-		fragmentColor = vec4(0.0); // place holder
+		//fragmentColor = vec4(mosaic(gl_FragCoord.xy, textureSize(frameBufferTexture, 0)),1.0); // place holder
+		fragmentColor = textureRect(frameBufferTexture, mosaic(gl_FragCoord.xy));
 		break;
 	case 7:
 		fragmentColor = vec4(0.0); // place holder
@@ -129,4 +134,31 @@ vec3 blur(vec2 coord)
 vec3 grayscale(vec3 rgbSample)
 {
 	return vec3(rgbSample.r * 0.2126 + rgbSample.g * 0.7152 + rgbSample.b * 0.0722);
+}
+
+vec3 mosaic2(vec2 coord, vec2 text2d) {
+	float border = 20;
+	vec3 result = textureRect(frameBufferTexture, coord).xyz;
+	// 1 get pixel
+	// 2 avrg pixel color with the 4 next to it
+
+	for(float i=0;i<=text2d.x; i += border){
+		if(coord.x >= i && coord.x <= i+border ){
+			float resX = i;
+			for(float j=0; j<text2d.y;j+=border){
+				if(coord.y >= j && coord.y <= j+border){
+				float resY =j;
+				vec4 resText = textureRect(frameBufferTexture, vec2(resX,resY));
+				return resText.xyz;
+				}	
+			}
+		}
+	}
+
+
+	return result;
+}
+
+vec2 mosaic(vec2 inCoord) {
+	return floor(inCoord / filterSize) * filterSize;
 }

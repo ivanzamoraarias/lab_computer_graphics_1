@@ -177,7 +177,7 @@ void display()
 	printf("=========");
 	printf("%f", deltaTime);
 
-	carModelTwoMatrix = rotate(2.0f *currentTime, vec3(0.0f,1.0f,0.0f)) * translate( vec3(-cos(currentTime)*8.0f, 0.0f, sin(currentTime)*8.0f));
+	carModelTwoMatrix = rotate(2.0f *currentTime, vec3(0.0f,1.0f,0.0f)) * translate(vec3(-cos(currentTime)*8.0f, 0.0f, sin(currentTime)*8.0f));
 	//carModelTwoMatrix = rotate(carModelTwoMatrix, 1.0f, vec3(1.0f, 0.0f, 0.0f));
 		//translationTwo * rotationTwo;
 	modelViewProjectionMatrix = projectionMatrix * viewMatrix * carModelTwoMatrix;

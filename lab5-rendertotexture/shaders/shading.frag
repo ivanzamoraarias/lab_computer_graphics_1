@@ -55,15 +55,121 @@ uniform vec3 viewSpaceLightPosition;
 ///////////////////////////////////////////////////////////////////////////////
 layout(location = 0) out vec4 fragmentColor;
 
-
+vec3 getLi() {
+	return 
+	point_light_intensity_multiplier * 
+	point_light_color * 
+	(
+		1.0f/pow(distance(viewSpaceLightPosition,viewSpacePosition),2)
+	);
+}
+vec3 getWi() {
+	return normalize(viewSpaceLightPosition - viewSpacePosition);
+}
+vec3 getDiffuseTerm(vec3 normal, vec3 wi, vec3 Li) {
+	return material_color * 
+		(1.0f/PI) * 
+		abs(dot(normal,wi))*Li;
+}
+vec3 getWh(vec3 wo,vec3 wi) {
+	return  normalize(wi+wo);
+}
+float getFresnel(vec3 wi,vec3 wh){
+	return material_fresnel+(1-material_fresnel)
+		*pow(
+			(1.0f-dot(wh,wi)),5
+		);
+}
+float getMicrofacet(vec3 n, vec3 wh) {
+	return ((material_shininess+2)/(2*PI))
+		*pow(abs(dot(n,wh)),material_shininess);
+}
+float getShadowingMasking(vec3 n, vec3 wo, vec3 wi, vec3 wh) {
+	return min(1, min(
+		2*(dot(n,wh)*dot(n,wo)/dot(wo,wh)),
+		2*(dot(n,wh)*dot(n,wi)/dot(wo,wh))
+	));
+}
+float getbrdf(float fresnel, float microfacet_function, float masking_function, vec3 n, vec3 wo,vec3 wi) {
+	return fresnel * microfacet_function * masking_function / (4*dot(n,wo)*dot(n,wi));
+}
 vec3 calculateDirectIllumiunation(vec3 wo, vec3 n, vec3 base_color)
 {
-	return vec3(1.f);
+	vec3 direct_illum = base_color;
+	vec3 Li = getLi();
+	vec3 wi = getWi();
+
+	if(dot(n, wi) <= 0) {
+		return vec3(0);
+	}
+
+	vec3 diffuse_term = getDiffuseTerm(n,wi,Li);
+
+	vec3 wh = getWh(wo,wi);
+
+	float fresnel = getFresnel(wi,wh);
+	
+	float microfacet_function = getMicrofacet(n,wh);
+	float masking_function = getShadowingMasking(n,wo,wi,wh);
+
+	float brdf = getbrdf(fresnel, microfacet_function,masking_function, n,wo,wi);
+
+	vec3 dialetic_term = brdf * dot(n, wi)*Li+(1-fresnel)*diffuse_term;
+	vec3 metal_term = brdf * material_color * dot(n, wi)*Li;
+	vec3 microfacet_term = material_metalness*metal_term+(1-material_metalness)*dialetic_term;
+
+	return material_reflectivity*microfacet_term+(1-material_reflectivity)*diffuse_term;
 }
 
+vec2 getSphericalCoords(vec3 dir){
+	float theta = acos(max(-1.0f, min(1.0f, dir.y)));
+	float phi = atan(dir.z, dir.x);
+	if(phi < 0.0f)
+	{
+		phi = phi + 2.0f * PI;
+	}
+
+	// Use these to lookup the color in the environment map
+	return vec2(phi / (2.0 * PI), theta / PI);
+}
 vec3 calculateIndirectIllumination(vec3 wo, vec3 n, vec3 base_color)
 {
-	return vec3(0.0);
+	vec3 indirect_illum = vec3(0.f);
+
+	vec3 nws = mat3(viewInverse )*n;// nws.xyz
+	// Calculate the world-space position of this fragment on the near plane
+	vec3 dir = normalize(nws.xyz);
+
+	// Use these to lookup the color in the environment map
+	vec2 lookup = getSphericalCoords(dir);
+	vec4 irraduance = environment_multiplier * texture(irradianceMap, lookup);
+
+	
+	vec3 diffuse_term = material_color * (1.0f/PI) * irraduance.xyz ;
+
+	vec3 wit = mat3(viewInverse) * wo;
+	vec3 wi = normalize(reflect(-wo,n));
+
+
+	// Use these to lookup the color in the environment map
+	vec2 lookup2 = getSphericalCoords( normalize(mat3(viewInverse) * wi));
+
+	vec3 wh = normalize(wi+wo);
+	float roughness = sqrt(sqrt(2.0f/(material_shininess+2)));
+
+	vec3 Li = environment_multiplier * textureLod(reflectionMap, lookup2, roughness * 7.0f).xyz;
+	float fresnel = material_fresnel+(1-material_fresnel)
+		*pow(
+			(1.0f-dot(wh,wi)),5
+		);
+
+	vec3 dialetic_term = fresnel*Li+(1-fresnel)*diffuse_term;
+	vec3 metal_term = fresnel*material_color*Li;
+
+	
+	vec3 microfacet_term = material_metalness*metal_term+(1-material_metalness)*dialetic_term;
+
+	return material_reflectivity*microfacet_term+(1-material_reflectivity)*diffuse_term;
 }
 
 

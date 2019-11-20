@@ -26,6 +26,7 @@ bool showUI = true;
 ivec2 g_prevMouseCoords = { -1, -1 };
 bool g_isMouseDragging = false;
 bool g_isMouseRightDragging = false;
+GLboolean depth_test_enabled;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Shader programs
@@ -68,9 +69,11 @@ vec3 point_light_color = vec3(1.f, 1.f, 1.f);
 vec3 cameraPosition(-30.0f, 10.0f, 30.0f);
 vec3 cameraDirection = normalize(vec3(0.0f) - cameraPosition);
 vec3 worldUp(0.0f, 1.0f, 0.0f);
-const std::string model_filename = "../scenes/NewShip.obj";
+// const std::string model_filename = "../scenes/NewShip.obj";
+const std::string model_filename = "../scenes/materialtest.obj";
 ///////////////////////////////////////////////////////////////////////////////
-
+GLuint vertexArrayObject;
+GLuint indexBuffer;
 
 labhelper::Model* fighterModel = nullptr;
 labhelper::Model* sphereModel = nullptr;
@@ -96,6 +99,33 @@ void loadShaders(bool is_reload)
 ///////////////////////////////////////////////////////////////////////////////
 void initFullScreenQuad()
 {
+	const float posstion_vao[] = {
+		-1.0f,-1.0f, // 0
+		1.0f,-1.0f, // 1
+		1.0f,1.0f, // 2
+		-1.0f,1.0f // 3
+	};
+	GLuint positionBuffer;
+	glGenBuffers(1, &positionBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(posstion_vao), posstion_vao, GL_STATIC_DRAW);
+
+	
+
+	glGenVertexArrays(1, &vertexArrayObject);
+	glBindVertexArray(vertexArrayObject);
+	glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
+	glVertexAttribPointer(0, 2, GL_FLOAT, false /*normalized*/, 0 /*stride*/, 0 /*offset*/);
+	glEnableVertexAttribArray(0); // Enable the vertex position attribute
+
+	const int indices[] = {
+		0, 1, 3, // Triangle 1
+		1, 2, 3  // Triangle 2
+	};
+	glGenBuffers(1, &indexBuffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
 	///////////////////////////////////////////////////////////////////////////
 	// initialize the fullScreenQuadVAO for drawFullScreenQuad
 	///////////////////////////////////////////////////////////////////////////
@@ -111,8 +141,19 @@ void initFullScreenQuad()
 ///////////////////////////////////////////////////////////////////////////////
 void drawFullScreenQuad()
 {
+	glGetBooleanv(GL_DEPTH_TEST, &depth_test_enabled);
+	glDisable(GL_DEPTH_TEST);
 	///////////////////////////////////////////////////////////////////////////
 	// draw a quad at full screen
+	glBindVertexArray(vertexArrayObject);
+	//glDrawArrays(GL_TRIANGLES, 0, 3); // 
+	//glDrawArrays(GL_TRIANGLES, 4, 6); // 
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+	if(depth_test_enabled)
+		glEnable(GL_DEPTH_TEST);
+	
+
 	///////////////////////////////////////////////////////////////////////////
 	// >>> @task 4.2
 	// ...
@@ -257,6 +298,12 @@ void display(void)
 	// Task 4.3 - Render a fullscreen quad, to generate the background from the
 	//            environment map.
 	///////////////////////////////////////////////////////////////////////////
+
+	glUseProgram(backgroundProgram);
+	labhelper::setUniformSlow(backgroundProgram, "environment_multiplier", environment_multiplier);
+	labhelper::setUniformSlow(backgroundProgram, "inv_PV", inverse(projectionMatrix * viewMatrix));
+	labhelper::setUniformSlow(backgroundProgram, "camera_pos", cameraPosition);
+	drawFullScreenQuad();
 
 	///////////////////////////////////////////////////////////////////////////
 	// Render the .obj models
