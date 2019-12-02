@@ -21,6 +21,7 @@ using namespace glm;
 #include <Model.h>
 #include "hdr.h"
 #include "fbo.h"
+#include "ParticleSystem.h"
 
 
 
@@ -83,10 +84,14 @@ vec3 worldUp(0.0f, 1.0f, 0.0f);
 labhelper::Model* fighterModel = nullptr;
 labhelper::Model* landingpadModel = nullptr;
 labhelper::Model* sphereModel = nullptr;
+labhelper::Model* particleModel = nullptr;
 
 mat4 roomModelMatrix;
 mat4 landingPadModelMatrix;
 mat4 fighterModelMatrix;
+mat4 particleModelMatrix;
+
+ParticleSystem particleSystem = ParticleSystem(200);
 
 void loadShaders(bool is_reload)
 {
@@ -204,6 +209,19 @@ void drawScene(GLuint currentShaderProgram,
 	                          inverse(transpose(viewMatrix * fighterModelMatrix)));
 
 	labhelper::render(fighterModel);
+
+	// Particles
+	particleSystem.process_particles(deltaTime);
+	for (auto& currentParticle : particleSystem.particles) {
+		labhelper::setUniformSlow(currentShaderProgram, "P",
+			vec4(currentParticle.pos.x, currentParticle.pos.y, currentParticle.pos.z,1));
+		labhelper::setUniformSlow(currentShaderProgram, "screen_x", viewMatrix * particleModelMatrix);
+		labhelper::setUniformSlow(currentShaderProgram, "screen_y",
+			inverse(transpose(viewMatrix * particleModelMatrix)));
+
+		labhelper::render(particleModel);
+	}
+	
 }
 
 
