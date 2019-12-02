@@ -49,6 +49,7 @@ bool g_isMouseDragging = false;
 GLuint shaderProgram;       // Shader for rendering the final image
 GLuint simpleShaderProgram; // Shader used to draw the shadow map
 GLuint backgroundProgram;
+GLuint particleShaderProgram;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Environment
@@ -91,7 +92,9 @@ mat4 landingPadModelMatrix;
 mat4 fighterModelMatrix;
 mat4 particleModelMatrix;
 
-ParticleSystem particleSystem = ParticleSystem(200);
+GLuint vertexArrayObject;
+
+ParticleSystem particleSystem(100000);
 
 void loadShaders(bool is_reload)
 {
@@ -124,9 +127,11 @@ void initGL()
 	fighterModel = labhelper::loadModelFromOBJ("../scenes/NewShip.obj");
 	landingpadModel = labhelper::loadModelFromOBJ("../scenes/landingpad.obj");
 	sphereModel = labhelper::loadModelFromOBJ("../scenes/sphere.obj");
+	particleModel = labhelper::loadModelFromOBJ("../scenes/sphere.obj");
 
 	roomModelMatrix = mat4(1.0f);
 	fighterModelMatrix = translate(15.0f * worldUp);
+	particleModelMatrix = translate(15.0f * worldUp);
 	landingPadModelMatrix = mat4(1.0f);
 
 	///////////////////////////////////////////////////////////////////////
@@ -211,16 +216,19 @@ void drawScene(GLuint currentShaderProgram,
 	labhelper::render(fighterModel);
 
 	// Particles
-	particleSystem.process_particles(deltaTime);
-	for (auto& currentParticle : particleSystem.particles) {
-		labhelper::setUniformSlow(currentShaderProgram, "P",
-			vec4(currentParticle.pos.x, currentParticle.pos.y, currentParticle.pos.z,1));
-		labhelper::setUniformSlow(currentShaderProgram, "screen_x", viewMatrix * particleModelMatrix);
-		labhelper::setUniformSlow(currentShaderProgram, "screen_y",
-			inverse(transpose(viewMatrix * particleModelMatrix)));
+	
 
-		labhelper::render(particleModel);
-	}
+		labhelper::setUniformSlow(simpleShaderProgram, "material_color",vec3(0.0f,225.0f, 0.0f));
+		labhelper::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix", projectionMatrix * viewMatrix * particleModelMatrix);
+		
+		
+		//labhelper::setUniformSlow(particleShaderProgram, "P",
+		//	vec4(currentParticle.pos.x, currentParticle.pos.y, currentParticle.pos.z,1));
+		// labhelper::setUniformSlow(particleShaderProgram, "screen_x", float(windowWidth));
+		//labhelper::setUniformSlow(particleShaderProgram, "screen_y", float(windowHeight));
+
+		//labhelper::render(particleModel);
+	
 	
 }
 
@@ -271,6 +279,17 @@ void display(void)
 	glViewport(0, 0, windowWidth, windowHeight);
 	glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//glBindFramebuffer(GL_FRAMEBUFFER,0);
+	//glBufferSubData(GL_ARRAY_BUFFER, 64, sizeof(particleSystem.particles),&particleSystem.particles);
+
+	const float position_particle[] = {
+		0.0f, 0.0f, 0.0f
+	};
+
+	glGenVertexArrays(1, &vertexArrayObject);
+	glBindVertexArray(vertexArrayObject);
+	glDrawArrays(GL_POINTS, 0, sizeof(particleSystem.particles));
 
 	drawBackground(viewMatrix, projMatrix);
 	drawScene(shaderProgram, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
@@ -386,6 +405,8 @@ int main(int argc, char* argv[])
 		previousTime = currentTime;
 		currentTime = timeSinceStart.count();
 		deltaTime = currentTime - previousTime;
+
+		particleSystem.process_particles(deltaTime);
 		// render to window
 		display();
 

@@ -24,8 +24,17 @@ public:
 	ParticleSystem() : max_size(0)
 	{
 	}
+	
+
 	explicit ParticleSystem(int size) : max_size(size)
 	{
+		Particle p = { 0, 3000000, glm::vec3(0, 0, 0), glm::vec3(0, 0, 0) };
+		int i = 0;
+		while (i < 5) {
+			spawn(p);
+			i++;
+		}
+		
 	}
 	~ParticleSystem()
 	{
