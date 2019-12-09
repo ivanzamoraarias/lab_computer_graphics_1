@@ -1,5 +1,3 @@
-
-
 #ifdef _WIN32
 extern "C" _declspec(dllexport) unsigned int NvOptimusEnablement = 0x00000001;
 #endif
@@ -21,6 +19,7 @@ using namespace glm;
 #include <Model.h>
 #include "hdr.h"
 #include "fbo.h"
+
 #include "ParticleSystem.h"
 
 
@@ -49,7 +48,6 @@ bool g_isMouseDragging = false;
 GLuint shaderProgram;       // Shader for rendering the final image
 GLuint simpleShaderProgram; // Shader used to draw the shadow map
 GLuint backgroundProgram;
-GLuint particleShaderProgram;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Environment
@@ -85,29 +83,30 @@ vec3 worldUp(0.0f, 1.0f, 0.0f);
 labhelper::Model* fighterModel = nullptr;
 labhelper::Model* landingpadModel = nullptr;
 labhelper::Model* sphereModel = nullptr;
-labhelper::Model* particleModel = nullptr;
 
 mat4 roomModelMatrix;
 mat4 landingPadModelMatrix;
 mat4 fighterModelMatrix;
-mat4 particleModelMatrix;
 
-GLuint vertexArrayObject;
 
-ParticleSystem particleSystem(100000);
+GLuint vertexArrayObject, particleBuffer;
+
+ParticleSystem particle_system = ParticleSystem(100000);
+std::vector<glm::vec4> data;
+
 
 void loadShaders(bool is_reload)
 {
 	GLuint shader = labhelper::loadShaderProgram("../project/simple.vert", "../project/simple.frag",
-	                                             is_reload);
-	if(shader != 0)
+		is_reload);
+	if (shader != 0)
 		simpleShaderProgram = shader;
 	shader = labhelper::loadShaderProgram("../project/background.vert", "../project/background.frag",
-	                                      is_reload);
-	if(shader != 0)
+		is_reload);
+	if (shader != 0)
 		backgroundProgram = shader;
 	shader = labhelper::loadShaderProgram("../project/shading.vert", "../project/shading.frag", is_reload);
-	if(shader != 0)
+	if (shader != 0)
 		shaderProgram = shader;
 }
 
@@ -117,7 +116,7 @@ void initGL()
 	//		Load Shaders
 	///////////////////////////////////////////////////////////////////////
 	backgroundProgram = labhelper::loadShaderProgram("../project/background.vert",
-	                                                 "../project/background.frag");
+		"../project/background.frag");
 	shaderProgram = labhelper::loadShaderProgram("../project/shading.vert", "../project/shading.frag");
 	simpleShaderProgram = labhelper::loadShaderProgram("../project/simple.vert", "../project/simple.frag");
 
@@ -127,11 +126,9 @@ void initGL()
 	fighterModel = labhelper::loadModelFromOBJ("../scenes/NewShip.obj");
 	landingpadModel = labhelper::loadModelFromOBJ("../scenes/landingpad.obj");
 	sphereModel = labhelper::loadModelFromOBJ("../scenes/sphere.obj");
-	particleModel = labhelper::loadModelFromOBJ("../scenes/sphere.obj");
 
 	roomModelMatrix = mat4(1.0f);
 	fighterModelMatrix = translate(15.0f * worldUp);
-	particleModelMatrix = translate(15.0f * worldUp);
 	landingPadModelMatrix = mat4(1.0f);
 
 	///////////////////////////////////////////////////////////////////////
@@ -139,7 +136,7 @@ void initGL()
 	///////////////////////////////////////////////////////////////////////
 	const int roughnesses = 8;
 	std::vector<std::string> filenames;
-	for(int i = 0; i < roughnesses; i++)
+	for (int i = 0; i < roughnesses; i++)
 		filenames.push_back("../scenes/envmaps/" + envmap_base_name + "_dl_" + std::to_string(i) + ".hdr");
 
 	reflectionMap = labhelper::loadHdrMipmapTexture(filenames);
@@ -147,20 +144,57 @@ void initGL()
 	irradianceMap = labhelper::loadHdrTexture("../scenes/envmaps/" + envmap_base_name + "_irradiance.hdr");
 
 
+	///////////////////////////////////////////////////////////////////////
+	// Load particles stuff
+	///////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////
+	// Create the vertex array object
+	///////////////////////////////////////////////////////////////////////////
+	// Create a handle for the vertex array object
+	glGenVertexArrays(1, &vertexArrayObject);
+	// Set it as current, i.e., related calls will affect this object
+	glBindVertexArray(vertexArrayObject);
+
+	/////////////////////////
+	/// Buffer
+	////////////
+	glGenBuffers(1, &particleBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, particleBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec4)*100000, nullptr, GL_STATIC_DRAW);
+	//glBufferSubData(GL_ARRAY_BUFFER, 64 ,sizeof(data), &data);
+
+	glVertexAttribPointer(0, 4, GL_FLOAT, false /*normalized*/, 0 /*stride*/, 0 /*offset*/);
+
+	glEnableVertexAttribArray(0);
+
+
+
 	glEnable(GL_DEPTH_TEST); // enable Z-buffering
 	glEnable(GL_CULL_FACE);  // enables backface culling
 
+	for (int i = 0; i < 5000; i++) {
+		Particle p;
+		p.lifetime = 0;
+		p.life_length = 5;
+		p.velocity = vec3(0);
+
+		const float theta = labhelper::uniform_randf(0.f, 2.f * M_PI);
+		const float u = labhelper::uniform_randf(-1.f, 1.f);
+		glm::vec3 pos = 10.0f * glm::vec3(sqrt(1.f - u * u) * cosf(theta), u, sqrt(1.f - u * u) * sinf(theta));
+		p.pos = pos;
+		particle_system.spawn(p);
+	}
 
 }
 
 void debugDrawLight(const glm::mat4& viewMatrix,
-                    const glm::mat4& projectionMatrix,
-                    const glm::vec3& worldSpaceLightPos)
+	const glm::mat4& projectionMatrix,
+	const glm::vec3& worldSpaceLightPos)
 {
 	mat4 modelMatrix = glm::translate(worldSpaceLightPos);
 	glUseProgram(shaderProgram);
 	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix",
-	                          projectionMatrix * viewMatrix * modelMatrix);
+		projectionMatrix * viewMatrix * modelMatrix);
 	labhelper::render(sphereModel);
 }
 
@@ -175,20 +209,20 @@ void drawBackground(const mat4& viewMatrix, const mat4& projectionMatrix)
 }
 
 void drawScene(GLuint currentShaderProgram,
-               const mat4& viewMatrix,
-               const mat4& projectionMatrix,
-               const mat4& lightViewMatrix,
-               const mat4& lightProjectionMatrix)
+	const mat4& viewMatrix,
+	const mat4& projectionMatrix,
+	const mat4& lightViewMatrix,
+	const mat4& lightProjectionMatrix)
 {
 	glUseProgram(currentShaderProgram);
 	// Light source
 	vec4 viewSpaceLightPosition = viewMatrix * vec4(lightPosition, 1.0f);
 	labhelper::setUniformSlow(currentShaderProgram, "point_light_color", point_light_color);
 	labhelper::setUniformSlow(currentShaderProgram, "point_light_intensity_multiplier",
-	                          point_light_intensity_multiplier);
+		point_light_intensity_multiplier);
 	labhelper::setUniformSlow(currentShaderProgram, "viewSpaceLightPosition", vec3(viewSpaceLightPosition));
 	labhelper::setUniformSlow(currentShaderProgram, "viewSpaceLightDir",
-	                          normalize(vec3(viewMatrix * vec4(-lightPosition, 0.0f))));
+		normalize(vec3(viewMatrix * vec4(-lightPosition, 0.0f))));
 
 
 	// Environment
@@ -199,37 +233,22 @@ void drawScene(GLuint currentShaderProgram,
 
 	// landing pad
 	labhelper::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix",
-	                          projectionMatrix * viewMatrix * landingPadModelMatrix);
+		projectionMatrix * viewMatrix * landingPadModelMatrix);
 	labhelper::setUniformSlow(currentShaderProgram, "modelViewMatrix", viewMatrix * landingPadModelMatrix);
 	labhelper::setUniformSlow(currentShaderProgram, "normalMatrix",
-	                          inverse(transpose(viewMatrix * landingPadModelMatrix)));
+		inverse(transpose(viewMatrix * landingPadModelMatrix)));
 
 	labhelper::render(landingpadModel);
 
 	// Fighter
 	labhelper::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix",
-	                          projectionMatrix * viewMatrix * fighterModelMatrix);
+		projectionMatrix * viewMatrix * fighterModelMatrix);
 	labhelper::setUniformSlow(currentShaderProgram, "modelViewMatrix", viewMatrix * fighterModelMatrix);
 	labhelper::setUniformSlow(currentShaderProgram, "normalMatrix",
-	                          inverse(transpose(viewMatrix * fighterModelMatrix)));
+		inverse(transpose(viewMatrix * fighterModelMatrix)));
 
 	labhelper::render(fighterModel);
 
-	// Particles
-	
-
-		labhelper::setUniformSlow(simpleShaderProgram, "material_color",vec3(0.0f,225.0f, 0.0f));
-		labhelper::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix", projectionMatrix * viewMatrix * particleModelMatrix);
-		
-		
-		//labhelper::setUniformSlow(particleShaderProgram, "P",
-		//	vec4(currentParticle.pos.x, currentParticle.pos.y, currentParticle.pos.z,1));
-		// labhelper::setUniformSlow(particleShaderProgram, "screen_x", float(windowWidth));
-		//labhelper::setUniformSlow(particleShaderProgram, "screen_y", float(windowHeight));
-
-		//labhelper::render(particleModel);
-	
-	
 }
 
 
@@ -241,7 +260,7 @@ void display(void)
 	{
 		int w, h;
 		SDL_GetWindowSize(g_window, &w, &h);
-		if(w != windowWidth || h != windowHeight)
+		if (w != windowWidth || h != windowHeight)
 		{
 			windowWidth = w;
 			windowHeight = h;
@@ -280,22 +299,40 @@ void display(void)
 	glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	//glBindFramebuffer(GL_FRAMEBUFFER,0);
-	//glBufferSubData(GL_ARRAY_BUFFER, 64, sizeof(particleSystem.particles),&particleSystem.particles);
-
-	const float position_particle[] = {
-		0.0f, 0.0f, 0.0f
-	};
-
-	glGenVertexArrays(1, &vertexArrayObject);
-	glBindVertexArray(vertexArrayObject);
-	glDrawArrays(GL_POINTS, 0, sizeof(particleSystem.particles));
-
-	drawBackground(viewMatrix, projMatrix);
-	drawScene(shaderProgram, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
-	debugDrawLight(viewMatrix, projMatrix, vec3(lightPosition));
 
 
+	//drawBackground(viewMatrix, projMatrix);
+	//drawScene(shaderProgram, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
+	//debugDrawLight(viewMatrix, projMatrix, vec3(lightPosition));
+
+	///
+	//
+	//
+	//particle_system.process_particles(deltaTime);
+	/* Code for extracting data goes here */
+	data.clear();
+	data.reserve(int(particle_system.particles.size()*1.5) + 1);
+
+	// populate with vector 4 
+	for (Particle p : particle_system.particles) {
+		vec3 pos = vec3(viewMatrix * vec4(p.pos, 1.0f));
+		data.push_back(vec4(pos, p.lifetime));
+	}
+
+	// sort particles with sort from c++ standard library
+	/*std::sort(data.begin(), std::next(data.begin(), data.size()),
+		[](const vec4& lhs, const vec4& rhs) { return lhs.z < rhs.z; });*/
+
+	glBindBuffer(GL_ARRAY_BUFFER, particleBuffer);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, data.size() * sizeof(vec4), data.data());
+
+	// Particles
+	glUseProgram(simpleShaderProgram);
+	labhelper::setUniformSlow(simpleShaderProgram, "material_color", vec3(0.0f,255.0f,0.0f));
+	labhelper::setUniformSlow(simpleShaderProgram, "modelViewProjectionMatrix",
+		projMatrix);
+	glDrawArrays(GL_POINTS, 0, data.size());
+	
 
 }
 
@@ -304,18 +341,18 @@ bool handleEvents(void)
 	// check events (keyboard among other)
 	SDL_Event event;
 	bool quitEvent = false;
-	while(SDL_PollEvent(&event))
+	while (SDL_PollEvent(&event))
 	{
-		if(event.type == SDL_QUIT || (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_ESCAPE))
+		if (event.type == SDL_QUIT || (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_ESCAPE))
 		{
 			quitEvent = true;
 		}
-		if(event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_g)
+		if (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_g)
 		{
 			showUI = !showUI;
 		}
-		if(event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT
-		   && (!showUI || !ImGui::GetIO().WantCaptureMouse))
+		if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT
+			&& (!showUI || !ImGui::GetIO().WantCaptureMouse))
 		{
 			g_isMouseDragging = true;
 			int x;
@@ -325,12 +362,12 @@ bool handleEvents(void)
 			g_prevMouseCoords.y = y;
 		}
 
-		if(!(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT)))
+		if (!(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT)))
 		{
 			g_isMouseDragging = false;
 		}
 
-		if(event.type == SDL_MOUSEMOTION && g_isMouseDragging)
+		if (event.type == SDL_MOUSEMOTION && g_isMouseDragging)
 		{
 			// More info at https://wiki.libsdl.org/SDL_MouseMotionEvent
 			int delta_x = event.motion.x - g_prevMouseCoords.x;
@@ -338,7 +375,7 @@ bool handleEvents(void)
 			float rotationSpeed = 0.1f;
 			mat4 yaw = rotate(rotationSpeed * deltaTime * -delta_x, worldUp);
 			mat4 pitch = rotate(rotationSpeed * deltaTime * -delta_y,
-			                    normalize(cross(cameraDirection, worldUp)));
+				normalize(cross(cameraDirection, worldUp)));
 			cameraDirection = vec3(pitch * yaw * vec4(cameraDirection, 0.0f));
 			g_prevMouseCoords.x = event.motion.x;
 			g_prevMouseCoords.y = event.motion.y;
@@ -349,27 +386,27 @@ bool handleEvents(void)
 	const uint8_t* state = SDL_GetKeyboardState(nullptr);
 	vec3 cameraRight = cross(cameraDirection, worldUp);
 
-	if(state[SDL_SCANCODE_W])
+	if (state[SDL_SCANCODE_W])
 	{
 		cameraPosition += cameraSpeed * deltaTime * cameraDirection;
 	}
-	if(state[SDL_SCANCODE_S])
+	if (state[SDL_SCANCODE_S])
 	{
 		cameraPosition -= cameraSpeed * deltaTime * cameraDirection;
 	}
-	if(state[SDL_SCANCODE_A])
+	if (state[SDL_SCANCODE_A])
 	{
 		cameraPosition -= cameraSpeed * deltaTime * cameraRight;
 	}
-	if(state[SDL_SCANCODE_D])
+	if (state[SDL_SCANCODE_D])
 	{
 		cameraPosition += cameraSpeed * deltaTime * cameraRight;
 	}
-	if(state[SDL_SCANCODE_Q])
+	if (state[SDL_SCANCODE_Q])
 	{
 		cameraPosition -= cameraSpeed * deltaTime * worldUp;
 	}
-	if(state[SDL_SCANCODE_E])
+	if (state[SDL_SCANCODE_E])
 	{
 		cameraPosition += cameraSpeed * deltaTime * worldUp;
 	}
@@ -383,7 +420,7 @@ void gui()
 
 	// ----------------- Set variables --------------------------
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
-	            ImGui::GetIO().Framerate);
+		ImGui::GetIO().Framerate);
 	// ----------------------------------------------------------
 	// Render the GUI.
 	ImGui::Render();
@@ -398,20 +435,18 @@ int main(int argc, char* argv[])
 	bool stopRendering = false;
 	auto startTime = std::chrono::system_clock::now();
 
-	while(!stopRendering)
+	while (!stopRendering)
 	{
 		//update currentTime
 		std::chrono::duration<float> timeSinceStart = std::chrono::system_clock::now() - startTime;
 		previousTime = currentTime;
 		currentTime = timeSinceStart.count();
 		deltaTime = currentTime - previousTime;
-
-		particleSystem.process_particles(deltaTime);
 		// render to window
 		display();
 
 		// Render overlay GUI.
-		if(showUI)
+		if (showUI)
 		{
 			gui();
 		}
