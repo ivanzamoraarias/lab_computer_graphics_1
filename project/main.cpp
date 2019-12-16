@@ -172,18 +172,19 @@ void initGL()
 	glEnable(GL_DEPTH_TEST); // enable Z-buffering
 	glEnable(GL_CULL_FACE);  // enables backface culling
 
-	for (int i = 0; i < 5000; i++) {
-		Particle p;
-		p.lifetime = 0;
-		p.life_length = 5;
-		p.velocity = vec3(0);
+	//for (int i = 0; i < 10000; i++) {
+	//	Particle p;
+	//	p.pos = vec3(0);
+	//	p.lifetime = 0;
+	//	p.life_length = 5;
+	//	p.velocity = vec3(0);
 
-		const float theta = labhelper::uniform_randf(0.f, 2.f * M_PI);
-		const float u = labhelper::uniform_randf(-1.f, 1.f);
-		glm::vec3 pos = 10.0f * glm::vec3(sqrt(1.f - u * u) * cosf(theta), u, sqrt(1.f - u * u) * sinf(theta));
-		p.pos = pos;
-		particle_system.spawn(p);
-	}
+	//	/*const float theta = labhelper::uniform_randf(0.f, 2.f * M_PI);
+	//	const float u = labhelper::uniform_randf(-1.f, 1.f);
+	//	glm::vec3 pos = 10.0f * glm::vec3(sqrt(1.f - u * u) * cosf(theta), u, sqrt(1.f - u * u) * sinf(theta));
+	//	p.pos = pos;*/
+	//	particle_system.spawn(p);
+	//}
 
 }
 
@@ -300,10 +301,11 @@ void display(void)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
+	
 
-	//drawBackground(viewMatrix, projMatrix);
-	//drawScene(shaderProgram, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
-	//debugDrawLight(viewMatrix, projMatrix, vec3(lightPosition));
+	drawBackground(viewMatrix, projMatrix);
+	drawScene(shaderProgram, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
+	debugDrawLight(viewMatrix, projMatrix, vec3(lightPosition));
 
 	///
 	//
@@ -315,24 +317,32 @@ void display(void)
 
 	// populate with vector 4 
 	for (Particle p : particle_system.particles) {
-		vec3 pos = vec3(viewMatrix * vec4(p.pos, 1.0f));
+		vec3 pos = vec3(viewMatrix * fighterModelMatrix * vec4(p.pos, 1.0f));
 		data.push_back(vec4(pos, p.lifetime));
 	}
 
 	// sort particles with sort from c++ standard library
-	/*std::sort(data.begin(), std::next(data.begin(), data.size()),
-		[](const vec4& lhs, const vec4& rhs) { return lhs.z < rhs.z; });*/
+	std::sort(data.begin(), std::next(data.begin(), data.size()),
+		[](const vec4& lhs, const vec4& rhs) { return lhs.z < rhs.z; });
 
+	glBindVertexArray(vertexArrayObject);
 	glBindBuffer(GL_ARRAY_BUFFER, particleBuffer);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, data.size() * sizeof(vec4), data.data());
 
+	
 	// Particles
 	glUseProgram(simpleShaderProgram);
 	labhelper::setUniformSlow(simpleShaderProgram, "material_color", vec3(0.0f,255.0f,0.0f));
 	labhelper::setUniformSlow(simpleShaderProgram, "modelViewProjectionMatrix",
 		projMatrix);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDrawArrays(GL_POINTS, 0, data.size());
-	
+
+	glDisable(GL_BLEND);
+
+	particle_system.process_particles(deltaTime);
+
 
 }
 
