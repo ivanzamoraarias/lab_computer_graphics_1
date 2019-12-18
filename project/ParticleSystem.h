@@ -36,5 +36,5 @@ public:
 	// Methods
 	void kill(int id);
 	void spawn(Particle particle);
-	void process_particles(float dt);
+	void process_particles(float dt, glm::mat4 fighterModelMatrix);
 };

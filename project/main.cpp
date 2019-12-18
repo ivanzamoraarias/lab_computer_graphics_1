@@ -21,6 +21,7 @@ using namespace glm;
 #include "fbo.h"
 
 #include "ParticleSystem.h"
+#include <stb_image.h>
 
 
 
@@ -48,6 +49,7 @@ bool g_isMouseDragging = false;
 GLuint shaderProgram;       // Shader for rendering the final image
 GLuint simpleShaderProgram; // Shader used to draw the shadow map
 GLuint backgroundProgram;
+GLuint particleProgram;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Environment
@@ -89,10 +91,12 @@ mat4 landingPadModelMatrix;
 mat4 fighterModelMatrix;
 
 
-GLuint vertexArrayObject, particleBuffer;
+GLuint vertexArrayObject, particleBuffer, particleTexture;
 
 ParticleSystem particle_system = ParticleSystem(100000);
 std::vector<glm::vec4> data;
+
+mat4 T(1.0f), R(1.0f);
 
 
 void loadShaders(bool is_reload)
@@ -119,7 +123,8 @@ void initGL()
 		"../project/background.frag");
 	shaderProgram = labhelper::loadShaderProgram("../project/shading.vert", "../project/shading.frag");
 	simpleShaderProgram = labhelper::loadShaderProgram("../project/simple.vert", "../project/simple.frag");
-
+	particleProgram = labhelper::loadShaderProgram("../project/particle.vert",
+		"../project/particle.frag");
 	///////////////////////////////////////////////////////////////////////
 	// Load models and set up model matrices
 	///////////////////////////////////////////////////////////////////////
@@ -130,6 +135,7 @@ void initGL()
 	roomModelMatrix = mat4(1.0f);
 	fighterModelMatrix = translate(15.0f * worldUp);
 	landingPadModelMatrix = mat4(1.0f);
+	T = translate(15.0f * worldUp);
 
 	///////////////////////////////////////////////////////////////////////
 	// Load environment map
@@ -147,6 +153,21 @@ void initGL()
 	///////////////////////////////////////////////////////////////////////
 	// Load particles stuff
 	///////////////////////////////////////////////////////////////////////
+	
+	int w, h, comp;
+	unsigned char* image = stbi_load("../scenes/explosion.png", &w, &h, &comp, STBI_rgb_alpha);
+	
+	glGenTextures(0, &particleTexture);
+	glBindTexture(GL_TEXTURE_2D, particleTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+	free(image);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	///////////////////////////////////////////////////////////////////////////
 	// Create the vertex array object
 	///////////////////////////////////////////////////////////////////////////
@@ -301,6 +322,15 @@ void display(void)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
+	R[0] = normalize(R[0]);
+	R[2] = vec4(cross(vec3(R[0]), vec3(R[1])), 0.0f);
+
+	fighterModelMatrix = T * R;
+
+	
+	// modelViewProjectionMatrix = projectionMatrix * viewMatrix * carModelMatrix;
+	// glUniformMatrix4fv(loc, 1, false, &modelViewProjectionMatrix[0].x);
+
 	
 
 	drawBackground(viewMatrix, projMatrix);
@@ -310,14 +340,14 @@ void display(void)
 	///
 	//
 	//
-	//particle_system.process_particles(deltaTime);
+	
 	/* Code for extracting data goes here */
 	data.clear();
 	data.reserve(int(particle_system.particles.size()*1.5) + 1);
 
 	// populate with vector 4 
 	for (Particle p : particle_system.particles) {
-		vec3 pos = vec3(viewMatrix * fighterModelMatrix * vec4(p.pos, 1.0f));
+		vec3 pos = vec3(viewMatrix * vec4(p.pos, 1.0f));
 		data.push_back(vec4(pos, p.lifetime));
 	}
 
@@ -331,17 +361,24 @@ void display(void)
 
 	
 	// Particles
-	glUseProgram(simpleShaderProgram);
-	labhelper::setUniformSlow(simpleShaderProgram, "material_color", vec3(0.0f,255.0f,0.0f));
-	labhelper::setUniformSlow(simpleShaderProgram, "modelViewProjectionMatrix",
+	glUseProgram(particleProgram);
+	labhelper::setUniformSlow(particleProgram, "screen_x", float(windowWidth));
+	labhelper::setUniformSlow(particleProgram, "screen_y", float(windowHeight));
+
+	// glUseProgram(simpleShaderProgram);
+	//labhelper::setUniformSlow(particleProgram, "colortexture", vec3(0.0f,255.0f,0.0f));
+	labhelper::setUniformSlow(particleProgram, "P",
 		projMatrix);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, particleTexture);
+	glEnable(GL_PROGRAM_POINT_SIZE);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDrawArrays(GL_POINTS, 0, data.size());
 
 	glDisable(GL_BLEND);
 
-	particle_system.process_particles(deltaTime);
+	particle_system.process_particles(deltaTime, fighterModelMatrix);
 
 
 }
@@ -390,11 +427,43 @@ bool handleEvents(void)
 			g_prevMouseCoords.x = event.motion.x;
 			g_prevMouseCoords.y = event.motion.y;
 		}
+
+
 	}
 
 	// check keyboard state (which keys are still pressed)
 	const uint8_t* state = SDL_GetKeyboardState(nullptr);
 	vec3 cameraRight = cross(cameraDirection, worldUp);
+
+
+	const float speed = 40.f;
+	const float rotateSpeed = 2.f;
+	if (state[SDL_SCANCODE_UP])
+	{
+		printf("Key Up is pressed down\n");
+		T[3] -= speed * deltaTime * R[0];
+	}
+	if (state[SDL_SCANCODE_DOWN])
+	{
+		printf("Key Down is pressed down\n");
+		T[3] += speed * deltaTime * R[0];
+	}
+	if (state[SDL_SCANCODE_LEFT]) {
+		if (state[SDL_SCANCODE_DOWN]) {
+			R[0] += rotateSpeed * deltaTime * R[2];
+		}
+		else {
+			R[0] -= rotateSpeed * deltaTime * R[2];
+		}
+	}
+	if (state[SDL_SCANCODE_RIGHT]) {
+		if (state[SDL_SCANCODE_DOWN]) {
+			R[0] -= rotateSpeed * deltaTime * R[2];
+		}
+		else {
+			R[0] += rotateSpeed * deltaTime * R[2];
+		}
+	}
 
 	if (state[SDL_SCANCODE_W])
 	{
