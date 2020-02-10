@@ -20,12 +20,16 @@ using namespace glm;
 #include <Model.h>
 #include "hdr.h"
 
+#include "GameObject.h"
+#include "Transformable.h"
+
 using std::min;
 using std::max;
 
-///////////////////////////////////////////////////////////////////////////////
-// Various globals
-///////////////////////////////////////////////////////////////////////////////
+
+
+GameObject playerObject;
+
 SDL_Window* g_window = nullptr;
 static float currentTime = 0.0f;
 static float deltaTime = 0.0f;
@@ -35,28 +39,16 @@ bool showUI = false;
 ivec2 g_prevMouseCoords = { -1, -1 };
 bool g_isMouseDragging = false;
 
-///////////////////////////////////////////////////////////////////////////////
-// Shader programs
-///////////////////////////////////////////////////////////////////////////////
 GLuint backgroundProgram, shaderProgram, postFxShader;
 
-///////////////////////////////////////////////////////////////////////////////
-// Environment
-///////////////////////////////////////////////////////////////////////////////
 float environment_multiplier = 1.0f;
 GLuint environmentMap, irradianceMap, reflectionMap;
 const std::string envmap_base_name = "001";
 
-///////////////////////////////////////////////////////////////////////////////
-// Light source
-///////////////////////////////////////////////////////////////////////////////
-float point_light_intensity_multiplier = 1000.0f;
+float point_light_intensity_multiplier = 2000.0f;
 vec3 point_light_color = vec3(1.f, 1.f, 1.f);
 const vec3 lightPosition = vec3(20.0f, 40.0f, 0.0f);
 
-///////////////////////////////////////////////////////////////////////////////
-// Camera parameters.
-///////////////////////////////////////////////////////////////////////////////
 vec3 securityCamPos = vec3(70.0f, 50.0f, -70.0f);
 vec3 securityCamDirection = normalize(-securityCamPos);
 vec3 cameraPosition(-70.0f, 50.0f, 70.0f);
@@ -65,18 +57,15 @@ float cameraSpeed = 10.f;
 
 vec3 worldUp(0.0f, 1.0f, 0.0f);
 
-///////////////////////////////////////////////////////////////////////////////
-// Models
-///////////////////////////////////////////////////////////////////////////////
 const std::string model_filename = "../scenes/NewShip.obj";
 labhelper::Model* landingpadModel = nullptr;
 labhelper::Model* fighterModel = nullptr;
+labhelper::Model* enemyModel = nullptr;
 labhelper::Model* sphereModel = nullptr;
 labhelper::Model* cameraModel = nullptr;
+labhelper::Model* terrainModel = nullptr;
 
-///////////////////////////////////////////////////////////////////////////////
-// Post processing effects
-///////////////////////////////////////////////////////////////////////////////
+
 enum PostProcessingEffect
 {
 	None = 0,
@@ -94,12 +83,13 @@ int currentEffect = PostProcessingEffect::None;
 int filterSize = 1;
 int filterSizes[12] = { 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25 };
 
-///////////////////////////////////////////////////////////////////////////////
-// Framebuffers
-///////////////////////////////////////////////////////////////////////////////
 
 struct FboInfo;
 std::vector<FboInfo> fboList;
+
+vec3 movePlayer(0.0f,0.0f,0.0f);
+vec3 rotatePlayer(0.0f, 0.0f, 1.0f);
+float rotatePlayerAngle = 0.0f;
 
 struct FboInfo
 {
@@ -198,8 +188,11 @@ void initGL()
 
 	// Load some models.
 	landingpadModel = labhelper::loadModelFromOBJ("../scenes/landingpad.obj");
+	terrainModel = labhelper::loadModelFromOBJ("../scenes/terrain.obj");
 	cameraModel = labhelper::loadModelFromOBJ("../scenes/wheatley.obj");
-	fighterModel = labhelper::loadModelFromOBJ("../scenes/NewShip.obj");
+	//fighterModel = labhelper::loadModelFromOBJ("../scenes/NewShip.obj");
+	fighterModel = labhelper::loadModelFromOBJ("../scenes/newTank.obj");
+	enemyModel = labhelper::loadModelFromOBJ("../scenes/newTank.obj");
 
 	// load and set up default shader
 	backgroundProgram = labhelper::loadShaderProgram("../lab5-rendertotexture/shaders/background.vert",
@@ -254,22 +247,46 @@ void drawScene(const mat4& view, const mat4& projection)
 	// camera
 	labhelper::setUniformSlow(shaderProgram, "viewInverse", inverse(view));
 
-	// landing pad
-	mat4 modelMatrix(1.0f);
-	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix", projection * view * modelMatrix);
-	labhelper::setUniformSlow(shaderProgram, "modelViewMatrix", view * modelMatrix);
-	labhelper::setUniformSlow(shaderProgram, "normalMatrix", inverse(transpose(view * modelMatrix)));
 
-	labhelper::render(landingpadModel);
+	// terrainModel
+
+	mat4 terrainModelMatrix(1.0f);
+	vec3 scaleTerrain(2.0f,2.0f,2.0f);
+	terrainModelMatrix = scale(scaleTerrain);
+	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
+	labhelper::setUniformSlow(shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
+	labhelper::setUniformSlow(shaderProgram, "normalMatrix", inverse(transpose(view * terrainModelMatrix)));
+
+	labhelper::render(terrainModel);
 
 	// Fighter
-	mat4 fighterModelMatrix = translate(15.0f * worldUp) * rotate(currentTime * -float(M_PI) / 4.0f, worldUp);
-	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix",
-	                          projection * view * fighterModelMatrix);
+	vec3 scaleVect(1,1,1);
+	vec3 translateVect(0.0f,4.0f,0.0f);
+	mat4 fighterModelMatrix = 
+		translate(translateVect)* translate(movePlayer)* 
+		rotate(float(M_PI)/2.0f,vec3(0.0f,1.0f,0.0f))* 
+		rotate(rotatePlayerAngle, rotatePlayer)*
+		scale(scaleVect);
+	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix",  projection * view * fighterModelMatrix);
 	labhelper::setUniformSlow(shaderProgram, "modelViewMatrix", view * fighterModelMatrix);
 	labhelper::setUniformSlow(shaderProgram, "normalMatrix", inverse(transpose(view * fighterModelMatrix)));
 
 	labhelper::render(fighterModel);
+
+
+
+		// enemy
+		vec3 enemyscaleVect(1, 1, 1);
+	vec3 enemytranslateVect(20, 4.0f, 0);
+	mat4 enemyfighterModelMatrix =
+		translate(enemytranslateVect) *
+		rotate(float(M_PI) / 2.0f, vec3(0.0f, 1.0f, 0.0f)) *
+		scale(enemyscaleVect);
+	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix", projection * view * enemyfighterModelMatrix);
+	labhelper::setUniformSlow(shaderProgram, "modelViewMatrix", view * enemyfighterModelMatrix);
+	labhelper::setUniformSlow(shaderProgram, "normalMatrix", inverse(transpose(view * enemyfighterModelMatrix)));
+
+	labhelper::render(enemyModel);
 }
 
 void drawCamera(const mat4& camView, const mat4& view, const mat4& projection)
@@ -390,6 +407,7 @@ bool handleEvents(void)
 		{
 			showUI = !showUI;
 		}
+	
 		else if(event.type == SDL_MOUSEBUTTONDOWN
 		        && (event.button.button == SDL_BUTTON_LEFT || event.button.button == SDL_BUTTON_RIGHT)
 		        && (!showUI || !ImGui::GetIO().WantCaptureMouse))
@@ -462,6 +480,20 @@ bool handleEvents(void)
 		{
 			cameraPosition += deltaTime * cameraSpeed * worldUp;
 		}
+		if (state[SDL_SCANCODE_RIGHT]) {
+			rotatePlayerAngle -= currentTime*0.001f;
+			rotatePlayer = vec3(0.0f,1.0f,0.0f);
+		}
+		if (state[SDL_SCANCODE_LEFT]) {
+			rotatePlayerAngle += currentTime*0.001f;
+			rotatePlayer = vec3(0.0f, 1.0f, 0.0f);
+		}
+		if (state[SDL_SCANCODE_UP]) {
+			movePlayer += vec3(0.01f * currentTime, 0.0f, 0.0f);
+		}
+		if (state[SDL_SCANCODE_DOWN]) {
+			movePlayer += vec3(-0.01f*currentTime, 0.0f, 0.0f);
+		}
 	}
 
 	return quitEvent;
@@ -495,7 +527,9 @@ void gui()
 
 int main(int argc, char* argv[])
 {
-	g_window = labhelper::init_window_SDL("OpenGL Lab 5");
+	playerObject = GameObject();
+	playerObject.addComponent(new Transformable());
+	g_window = labhelper::init_window_SDL("3D Engine Battle Zone");
 
 	initGL();
 
@@ -504,6 +538,7 @@ int main(int argc, char* argv[])
 
 	while(!stopRendering)
 	{
+		GameObject object =  GameObject();
 		//update currentTime
 		std::chrono::duration<float> timeSinceStart = std::chrono::system_clock::now() - startTime;
 		deltaTime = timeSinceStart.count() - currentTime;
@@ -535,3 +570,5 @@ int main(int argc, char* argv[])
 	labhelper::shutDown(g_window);
 	return 0;
 }
+
+
