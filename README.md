@@ -1,4 +1,8 @@
-# Description
+#Ivan's work description
+This is a branch from the computer graphics(TDA362/DIT223) lab for anoher class called Game Engines Architecture.
+I am ussing the base rendering engine to create a complete game engine in 3D
+
+#Original Description
 This is the repository for the tutorials of the course TDA362/DIT223 Computer Graphics given at Chalmers University of
 Technology 2019. It contains resources and skeleton code which is to be filled in by students in six different lab assignments and one larger project. 
 
