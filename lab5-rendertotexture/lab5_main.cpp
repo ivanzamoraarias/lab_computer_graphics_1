@@ -520,7 +520,7 @@ int main(int argc, char* argv[])
 	tankObject.addComponent(
 		new Transformable(), TRANSFORMABLE
 	);
-	//tankObject.getComponent(TRANSFORMABLE)
+	//reinterpret_cast <Transformable *>(tankObject.getComponent(TRANSFORMABLE))->setTransLate;
 	g_window = labhelper::init_window_SDL("3D Engine Battle Zone");
 
 	initGL();
