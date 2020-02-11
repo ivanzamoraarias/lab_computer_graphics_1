@@ -21,14 +21,16 @@ using namespace glm;
 #include "hdr.h"
 
 #include "GameObject.h"
+#include "ObjectComponent.h"
 #include "Transformable.h"
+#include <memory>
 
 using std::min;
 using std::max;
 
 
 
-GameObject playerObject;
+GameObject tankObject;
 
 SDL_Window* g_window = nullptr;
 static float currentTime = 0.0f;
@@ -51,7 +53,8 @@ const vec3 lightPosition = vec3(20.0f, 40.0f, 0.0f);
 
 vec3 securityCamPos = vec3(70.0f, 50.0f, -70.0f);
 vec3 securityCamDirection = normalize(-securityCamPos);
-vec3 cameraPosition(-70.0f, 50.0f, 70.0f);
+//vec3 cameraPosition(-70.0f, 50.0f, 70.0f);
+vec3 cameraPosition(-70.0f, 0.0f, 70.0f);
 vec3 cameraDirection = normalize(vec3(0.0f) - cameraPosition);
 float cameraSpeed = 10.f;
 
@@ -251,8 +254,9 @@ void drawScene(const mat4& view, const mat4& projection)
 	// terrainModel
 
 	mat4 terrainModelMatrix(1.0f);
+	vec3 translateTerrain(0.0f,-13.0f,0.0f);
 	vec3 scaleTerrain(2.0f,2.0f,2.0f);
-	terrainModelMatrix = scale(scaleTerrain);
+	terrainModelMatrix = translate(translateTerrain) * scale(scaleTerrain);
 	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
 	labhelper::setUniformSlow(shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
 	labhelper::setUniformSlow(shaderProgram, "normalMatrix", inverse(transpose(view * terrainModelMatrix)));
@@ -261,7 +265,7 @@ void drawScene(const mat4& view, const mat4& projection)
 
 	// Fighter
 	vec3 scaleVect(1,1,1);
-	vec3 translateVect(0.0f,4.0f,0.0f);
+	vec3 translateVect(0.0f,-9.0f,0.0f);
 	mat4 fighterModelMatrix = 
 		translate(translateVect)* translate(movePlayer)* 
 		rotate(float(M_PI)/2.0f,vec3(0.0f,1.0f,0.0f))* 
@@ -291,14 +295,14 @@ void drawScene(const mat4& view, const mat4& projection)
 
 void drawCamera(const mat4& camView, const mat4& view, const mat4& projection)
 {
-	glUseProgram(shaderProgram);
+	/*glUseProgram(shaderProgram);
 	mat4 invCamView = inverse(camView);
 	mat4 camMatrix = invCamView * scale(vec3(10.0f)) * rotate(float(M_PI), vec3(0.0f, 1.0, 0.0));
 	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix", projection * view * camMatrix);
 	labhelper::setUniformSlow(shaderProgram, "modelViewMatrix", view * camMatrix);
 	labhelper::setUniformSlow(shaderProgram, "normalMatrix", inverse(transpose(view * camMatrix)));
 
-	labhelper::render(cameraModel);
+	labhelper::render(cameraModel);*/
 }
 
 
@@ -437,7 +441,8 @@ bool handleEvents(void)
 				mat4 yaw = rotate(rotationSpeed * deltaTime * -delta_x, worldUp);
 				mat4 pitch = rotate(rotationSpeed * deltaTime * -delta_y,
 				                    normalize(cross(cameraDirection, worldUp)));
-				cameraDirection = vec3(pitch * yaw * vec4(cameraDirection, 0.0f));
+				//cameraDirection = vec3(pitch * yaw * vec4(cameraDirection, 0.0f));
+				cameraDirection = vec3( yaw * vec4(cameraDirection, 0.0f));
 			}
 			else if(mouseState & SDL_BUTTON(SDL_BUTTON_RIGHT))
 			{
@@ -504,31 +509,18 @@ void gui()
 	// Inform imgui of new frame
 	ImGui_ImplSdlGL3_NewFrame(g_window);
 
-	// ----------------- Set variables --------------------------
-	ImGui::Text("Post-processing effect");
-	ImGui::RadioButton("None", &currentEffect, PostProcessingEffect::None);
-	ImGui::RadioButton("Sepia", &currentEffect, PostProcessingEffect::Sepia);
-	ImGui::RadioButton("Mushroom", &currentEffect, PostProcessingEffect::Mushroom);
-	ImGui::RadioButton("Blur", &currentEffect, PostProcessingEffect::Blur);
-	ImGui::SameLine();
-	ImGui::SliderInt("Filter size", &filterSize, 1, 12);
-	ImGui::RadioButton("Grayscale", &currentEffect, PostProcessingEffect::Grayscale);
-	ImGui::RadioButton("All of the above", &currentEffect, PostProcessingEffect::Composition);
-	ImGui::RadioButton("Mosaic", &currentEffect, PostProcessingEffect::Mosaic);
-	ImGui::RadioButton("Separable Blur", &currentEffect, PostProcessingEffect::Separable_blur);
-	ImGui::RadioButton("Bloom", &currentEffect, PostProcessingEffect::Bloom);
-	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
-	            ImGui::GetIO().Framerate);
-	// ----------------------------------------------------------
-
-	// Render the GUI.
 	ImGui::Render();
 }
 
 int main(int argc, char* argv[])
 {
-	playerObject = GameObject();
-	playerObject.addComponent(new Transformable());
+	//ObjectComponent* point = std::unique_ptr<ObjectComponent> pAbs(new Transformable());
+	
+	tankObject = GameObject();
+	tankObject.addComponent(
+		new Transformable(), TRANSFORMABLE
+	);
+	//tankObject.getComponent(TRANSFORMABLE)
 	g_window = labhelper::init_window_SDL("3D Engine Battle Zone");
 
 	initGL();
@@ -538,7 +530,8 @@ int main(int argc, char* argv[])
 
 	while(!stopRendering)
 	{
-		GameObject object =  GameObject();
+		tankObject.update();
+		//GameObject object =  GameObject();
 		//update currentTime
 		std::chrono::duration<float> timeSinceStart = std::chrono::system_clock::now() - startTime;
 		deltaTime = timeSinceStart.count() - currentTime;

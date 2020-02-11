@@ -15,7 +15,7 @@ private:
 	float rotateAngle;
 public:
 	void update();
-    void update(GameObject& object);
+    void update(GameEntity& object);
 	void setTransLate(vec3 translate);
 	void setScale(vec3 scale);
 	void setRotate(vec3 rotate, float angle);

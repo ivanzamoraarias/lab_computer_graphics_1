@@ -1,12 +1,13 @@
 #pragma once
 #include "Transformable.h"
+#include <iostream>
 
 void Transformable::update()
 {
 }
 
-void Transformable::update(GameObject& object) {
-
+void Transformable::update(GameEntity& object) {
+	std::cout << "Upddate Game Entity" << std::endl;
 }
 
 void Transformable::setTransLate(vec3 translate)
