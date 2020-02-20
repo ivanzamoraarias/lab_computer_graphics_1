@@ -1,19 +1,16 @@
 
-#include <GL/glew.h>
+#include "Engine.h"
 
 // STB_IMAGE for loading images of many filetypes
 #include <stb_image.h>
 
 #include <algorithm>
-#include <chrono>
-#include <string>
 #include <iostream>
 
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 using namespace glm;
 
-#include <labhelper.h>
 #include <imgui.h>
 #include <imgui_impl_sdl_gl3.h>
 
@@ -30,6 +27,7 @@ using std::max;
 
 
 
+Engine* engine;
 GameObject tankObject;
 
 SDL_Window* g_window = nullptr;
@@ -264,16 +262,17 @@ void drawScene(const mat4& view, const mat4& projection)
 	labhelper::render(terrainModel);
 
 	// Fighter
-	vec3 scaleVect(1,1,1);
-	vec3 translateVect(0.0f,-9.0f,0.0f);
-	mat4 fighterModelMatrix = 
-		translate(translateVect)* translate(movePlayer)* 
-		rotate(float(M_PI)/2.0f,vec3(0.0f,1.0f,0.0f))* 
-		rotate(rotatePlayerAngle, rotatePlayer)*
-		scale(scaleVect);
-	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix",  projection * view * fighterModelMatrix);
-	labhelper::setUniformSlow(shaderProgram, "modelViewMatrix", view * fighterModelMatrix);
-	labhelper::setUniformSlow(shaderProgram, "normalMatrix", inverse(transpose(view * fighterModelMatrix)));
+	Transformable* tankTransform = (Transformable*)tankObject.getComponent(componentType::TRANSFORMABLE);
+	
+	tankTransform->setRotate(vec3(0.0f, 1.0f, 0.0f), float(M_PI) / 2.0f);
+	tankTransform->setScale(vec3(1,1,1));
+	tankTransform->setTransLate(vec3(0.0f, -9.0f, 0.0f));
+
+	mat4 tankMatrix = tankTransform->getTransformationMatrix();
+
+	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix",  projection * view * tankMatrix);
+	labhelper::setUniformSlow(shaderProgram, "modelViewMatrix", view * tankMatrix);
+	labhelper::setUniformSlow(shaderProgram, "normalMatrix", inverse(transpose(view * tankMatrix)));
 
 	labhelper::render(fighterModel);
 
@@ -293,24 +292,11 @@ void drawScene(const mat4& view, const mat4& projection)
 	labhelper::render(enemyModel);
 }
 
-void drawCamera(const mat4& camView, const mat4& view, const mat4& projection)
-{
-	/*glUseProgram(shaderProgram);
-	mat4 invCamView = inverse(camView);
-	mat4 camMatrix = invCamView * scale(vec3(10.0f)) * rotate(float(M_PI), vec3(0.0f, 1.0, 0.0));
-	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix", projection * view * camMatrix);
-	labhelper::setUniformSlow(shaderProgram, "modelViewMatrix", view * camMatrix);
-	labhelper::setUniformSlow(shaderProgram, "normalMatrix", inverse(transpose(view * camMatrix)));
 
-	labhelper::render(cameraModel);*/
-}
 
 
 void display()
 {
-	///////////////////////////////////////////////////////////////////////////
-	// Check if any framebuffer needs to be resized
-	///////////////////////////////////////////////////////////////////////////
 	int w, h;
 	SDL_GetWindowSize(g_window, &w, &h);
 
@@ -372,7 +358,6 @@ void display()
 	drawScene(viewMatrix, projectionMatrix); // using both shaderProgram and backgroundProgram
 
 	// camera (obj-model)
-	drawCamera(securityCamViewMatrix, viewMatrix, projectionMatrix);
 
 	///////////////////////////////////////////////////////////////////////////
 	// Post processing pass(es)
@@ -514,14 +499,19 @@ void gui()
 
 int main(int argc, char* argv[])
 {
-	//ObjectComponent* point = std::unique_ptr<ObjectComponent> pAbs(new Transformable());
-	
+	engine = new Engine();
+
 	tankObject = GameObject();
+	Transformable* transformableComp = new Transformable();
 	tankObject.addComponent(
-		new Transformable(), TRANSFORMABLE
+		transformableComp, TRANSFORMABLE
 	);
-	//reinterpret_cast <Transformable *>(tankObject.getComponent(TRANSFORMABLE))->setTransLate;
-	g_window = labhelper::init_window_SDL("3D Engine Battle Zone");
+
+	engine->addGameObject(&tankObject);
+
+	engine->start();
+
+	g_window = engine->g_window;
 
 	initGL();
 

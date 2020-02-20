@@ -4,6 +4,10 @@
 
 void Transformable::update()
 {
+	this->translateVector = vec3(1, 1, 1);
+	this->scaleVector = vec3(1,1,1);
+	this->rotateAngle = 0;
+	this->rotateVector = vec3(1,1,1);
 }
 
 void Transformable::update(GameEntity& object) {

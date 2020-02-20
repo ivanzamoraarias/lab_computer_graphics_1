@@ -1,9 +1,5 @@
 #include "GameEntity.h"
 
-GameEntity::GameEntity(/* args */)
-{
-}
+void GameEntity::update() {
 
-GameEntity::~GameEntity()
-{
 }
