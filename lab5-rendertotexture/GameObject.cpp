@@ -1,4 +1,5 @@
 #include "GameObject.h"
+#include "ObjectComponent.h"
 
 GameObject::GameObject()
 {
@@ -7,7 +8,7 @@ GameObject::GameObject()
 void GameObject::update()
 {
 	for (auto const& x : componentsMap) {
-		x.second->update(*this);
+		x.second->update();
 	}
 
 }
@@ -24,5 +25,11 @@ ObjectComponent* GameObject::getComponent(componentType type)
 
 void GameObject::updateComponent(std::pair< componentType, ObjectComponent*>& pair)
 {
-	pair.second->update(*this);
+	pair.second->update();
+}
+
+void ObjectComponent::create(Engine* e, GameObject* go)
+{
+	this->engine = e;
+	this->gameObject = go;
 }

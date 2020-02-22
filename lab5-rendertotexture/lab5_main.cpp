@@ -11,14 +11,7 @@
 #include <glm/gtx/transform.hpp>
 using namespace glm;
 
-#include <imgui.h>
-#include <imgui_impl_sdl_gl3.h>
 
-#include <Model.h>
-#include "hdr.h"
-
-#include "GameObject.h"
-#include "ObjectComponent.h"
 #include "Transformable.h"
 #include <memory>
 
@@ -39,10 +32,10 @@ bool showUI = false;
 ivec2 g_prevMouseCoords = { -1, -1 };
 bool g_isMouseDragging = false;
 
-GLuint backgroundProgram, shaderProgram, postFxShader;
+//GLuint backgroundProgram, shaderProgram, postFxShader;
 
 float environment_multiplier = 1.0f;
-GLuint environmentMap, irradianceMap, reflectionMap;
+//GLuint environmentMap, irradianceMap, reflectionMap;
 const std::string envmap_base_name = "001";
 
 float point_light_intensity_multiplier = 2000.0f;
@@ -85,109 +78,19 @@ int filterSize = 1;
 int filterSizes[12] = { 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25 };
 
 
-struct FboInfo;
-std::vector<FboInfo> fboList;
+struct FrameBufferObjectInfo;
+std::vector<FrameBufferObjectInfo> fboList;
 
 vec3 movePlayer(0.0f,0.0f,0.0f);
 vec3 rotatePlayer(0.0f, 0.0f, 1.0f);
 float rotatePlayerAngle = 0.0f;
 
-struct FboInfo
-{
-	GLuint framebufferId;
-	GLuint colorTextureTarget;
-	GLuint depthBuffer;
-	int width;
-	int height;
-	bool isComplete;
 
-	FboInfo(int w, int h)
-	{
-		isComplete = false;
-		width = w;
-		height = h;
-		// Generate two textures and set filter parameters (no storage allocated yet)
-		glGenTextures(1, &colorTextureTarget);
-		glBindTexture(GL_TEXTURE_2D, colorTextureTarget);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-		glGenTextures(1, &depthBuffer);
-		glBindTexture(GL_TEXTURE_2D, depthBuffer);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-		// allocate storage for textures
-		resize(width, height);
-
-		///////////////////////////////////////////////////////////////////////
-		// Generate and bind framebuffer
-		///////////////////////////////////////////////////////////////////////
-		// >>> @task 1
-		glGenFramebuffers(1, &framebufferId);
-		glBindFramebuffer(GL_FRAMEBUFFER, framebufferId);
-		// bind the texture as color attachment 0 (to the currently bound framebuffer)
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTextureTarget, 0);
-		glDrawBuffer(GL_COLOR_ATTACHMENT0);
-		// bind the texture as depth attachment (to the currently bound framebuffer)
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthBuffer, 0);
-
-		// check if framebuffer is complete
-		isComplete = checkFramebufferComplete();
-
-		// bind default framebuffer, just in case.
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	}
-
-	// if no resolution provided
-	FboInfo()
-	    : isComplete(false)
-	    , framebufferId(UINT32_MAX)
-	    , colorTextureTarget(UINT32_MAX)
-	    , depthBuffer(UINT32_MAX)
-	    , width(0)
-	    , height(0){};
-
-	void resize(int w, int h)
-	{
-		width = w;
-		height = h;
-		// Allocate a texture
-		glBindTexture(GL_TEXTURE_2D, colorTextureTarget);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
-		// generate a depth texture
-		glBindTexture(GL_TEXTURE_2D, depthBuffer);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT,
-		             nullptr);
-	}
-
-	bool checkFramebufferComplete(void)
-	{
-		// Check that our FBO is correctly set up, this can fail if we have
-		// incompatible formats in a buffer, or for example if we specify an
-		// invalid drawbuffer, among things.
-		glBindFramebuffer(GL_FRAMEBUFFER, framebufferId);
-		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-		if(status != GL_FRAMEBUFFER_COMPLETE)
-		{
-			labhelper::fatal_error("Framebuffer not complete");
-		}
-
-		return (status == GL_FRAMEBUFFER_COMPLETE);
-	}
-};
 
 
 void initGL()
 {
-	// enable Z-buffering
-	glEnable(GL_DEPTH_TEST);
-
-	// enable backface culling
-	glEnable(GL_CULL_FACE);
-
-	// Load some models.
+	
 	landingpadModel = labhelper::loadModelFromOBJ("../scenes/landingpad.obj");
 	terrainModel = labhelper::loadModelFromOBJ("../scenes/terrain.obj");
 	cameraModel = labhelper::loadModelFromOBJ("../scenes/wheatley.obj");
@@ -195,58 +98,29 @@ void initGL()
 	fighterModel = labhelper::loadModelFromOBJ("../scenes/newTank.obj");
 	enemyModel = labhelper::loadModelFromOBJ("../scenes/newTank.obj");
 
-	// load and set up default shader
-	backgroundProgram = labhelper::loadShaderProgram("../lab5-rendertotexture/shaders/background.vert",
-	                                                 "../lab5-rendertotexture/shaders/background.frag");
-	shaderProgram = labhelper::loadShaderProgram("../lab5-rendertotexture/shaders/shading.vert",
-	                                             "../lab5-rendertotexture/shaders/shading.frag");
-	postFxShader = labhelper::loadShaderProgram("../lab5-rendertotexture/shaders/postFx.vert",
-	                                            "../lab5-rendertotexture/shaders/postFx.frag");
-
-	///////////////////////////////////////////////////////////////////////////
-	// Load environment map
-	///////////////////////////////////////////////////////////////////////////
-	const int roughnesses = 8;
-	std::vector<std::string> filenames;
-	for(int i = 0; i < roughnesses; i++)
-		filenames.push_back("../scenes/envmaps/" + envmap_base_name + "_dl_" + std::to_string(i) + ".hdr");
-
-	reflectionMap = labhelper::loadHdrMipmapTexture(filenames);
-	environmentMap = labhelper::loadHdrTexture("../scenes/envmaps/" + envmap_base_name + ".hdr");
-	irradianceMap = labhelper::loadHdrTexture("../scenes/envmaps/" + envmap_base_name + "_irradiance.hdr");
-
-	///////////////////////////////////////////////////////////////////////////
-	// Setup Framebuffers
-	///////////////////////////////////////////////////////////////////////////
-	int w, h;
-	SDL_GetWindowSize(g_window, &w, &h);
-	const int numFbos = 5;
-	for (int i = 0; i < numFbos; i++) {
-		fboList.push_back(FboInfo(w, h));
-	}
 }
 
 void drawScene(const mat4& view, const mat4& projection)
 {
-	glUseProgram(backgroundProgram);
-	labhelper::setUniformSlow(backgroundProgram, "environment_multiplier", environment_multiplier);
-	labhelper::setUniformSlow(backgroundProgram, "inv_PV", inverse(projection * view));
-	labhelper::setUniformSlow(backgroundProgram, "camera_pos", cameraPosition);
+	glUseProgram(engine->backgroundProgram);
+	labhelper::setUniformSlow(engine->backgroundProgram, "environment_multiplier", environment_multiplier);
+	labhelper::setUniformSlow(engine->backgroundProgram, "inv_PV", inverse(projection * view));
+	labhelper::setUniformSlow(engine->backgroundProgram, "camera_pos", cameraPosition);
 	labhelper::drawFullScreenQuad();
 
-	glUseProgram(shaderProgram);
+	glUseProgram(engine->shaderProgram);
 	// Light source
 	vec4 viewSpaceLightPosition = view * vec4(lightPosition, 1.0f);
-	labhelper::setUniformSlow(shaderProgram, "point_light_color", point_light_color);
-	labhelper::setUniformSlow(shaderProgram, "point_light_intensity_multiplier",
+	labhelper::setUniformSlow(engine->shaderProgram, "point_light_color", point_light_color);
+	labhelper::setUniformSlow(engine->shaderProgram, "point_light_intensity_multiplier",
 	                          point_light_intensity_multiplier);
-	labhelper::setUniformSlow(shaderProgram, "viewSpaceLightPosition", vec3(viewSpaceLightPosition));
+	labhelper::setUniformSlow(engine->shaderProgram, "viewSpaceLightPosition", vec3(viewSpaceLightPosition));
 
 	// Environment
-	labhelper::setUniformSlow(shaderProgram, "environment_multiplier", environment_multiplier);
+	labhelper::setUniformSlow(engine->shaderProgram, "environment_multiplier", environment_multiplier);
 
 	// camera
-	labhelper::setUniformSlow(shaderProgram, "viewInverse", inverse(view));
+	labhelper::setUniformSlow(engine->shaderProgram, "viewInverse", inverse(view));
 
 
 	// terrainModel
@@ -255,24 +129,20 @@ void drawScene(const mat4& view, const mat4& projection)
 	vec3 translateTerrain(0.0f,-13.0f,0.0f);
 	vec3 scaleTerrain(2.0f,2.0f,2.0f);
 	terrainModelMatrix = translate(translateTerrain) * scale(scaleTerrain);
-	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
-	labhelper::setUniformSlow(shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
-	labhelper::setUniformSlow(shaderProgram, "normalMatrix", inverse(transpose(view * terrainModelMatrix)));
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * terrainModelMatrix)));
 
 	labhelper::render(terrainModel);
 
 	// Fighter
 	Transformable* tankTransform = (Transformable*)tankObject.getComponent(componentType::TRANSFORMABLE);
-	
-	tankTransform->setRotate(vec3(0.0f, 1.0f, 0.0f), float(M_PI) / 2.0f);
-	tankTransform->setScale(vec3(1,1,1));
-	tankTransform->setTransLate(vec3(0.0f, -9.0f, 0.0f));
 
 	mat4 tankMatrix = tankTransform->getTransformationMatrix();
 
-	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix",  projection * view * tankMatrix);
-	labhelper::setUniformSlow(shaderProgram, "modelViewMatrix", view * tankMatrix);
-	labhelper::setUniformSlow(shaderProgram, "normalMatrix", inverse(transpose(view * tankMatrix)));
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix",  projection * view * tankMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * tankMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * tankMatrix)));
 
 	labhelper::render(fighterModel);
 
@@ -285,9 +155,9 @@ void drawScene(const mat4& view, const mat4& projection)
 		translate(enemytranslateVect) *
 		rotate(float(M_PI) / 2.0f, vec3(0.0f, 1.0f, 0.0f)) *
 		scale(enemyscaleVect);
-	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix", projection * view * enemyfighterModelMatrix);
-	labhelper::setUniformSlow(shaderProgram, "modelViewMatrix", view * enemyfighterModelMatrix);
-	labhelper::setUniformSlow(shaderProgram, "normalMatrix", inverse(transpose(view * enemyfighterModelMatrix)));
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix", projection * view * enemyfighterModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * enemyfighterModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * enemyfighterModelMatrix)));
 
 	labhelper::render(enemyModel);
 }
@@ -300,17 +170,11 @@ void display()
 	int w, h;
 	SDL_GetWindowSize(g_window, &w, &h);
 
-	for(int i = 0; i < fboList.size(); i++)
+	for(int i = 0; i < engine->fboList.size(); i++)
 	{
-		if(fboList[i].width != w || fboList[i].height != h)
-			fboList[i].resize(w, h);
+		if(engine->fboList[i].width != w || engine->fboList[i].height != h)
+			engine->fboList[i].resize(w, h);
 	}
-
-	///////////////////////////////////////////////////////////////////////////
-	// setup matrices
-	///////////////////////////////////////////////////////////////////////////
-	mat4 securityCamViewMatrix = lookAt(securityCamPos, securityCamPos + securityCamDirection, worldUp);
-	mat4 securityCamProjectionMatrix = perspective(radians(30.0f), float(w) / float(h), 15.0f, 1000.0f);
 
 	mat4 projectionMatrix = perspective(radians(45.0f), float(w) / float(h), 10.0f, 1000.0f);
 	mat4 viewMatrix = lookAt(cameraPosition, cameraPosition + cameraDirection, worldUp);
@@ -319,28 +183,11 @@ void display()
 	// Bind the environment map(s) to unused texture units
 	///////////////////////////////////////////////////////////////////////////
 	glActiveTexture(GL_TEXTURE6);
-	glBindTexture(GL_TEXTURE_2D, environmentMap);
+	glBindTexture(GL_TEXTURE_2D, engine->environmentMap);
 	glActiveTexture(GL_TEXTURE7);
-	glBindTexture(GL_TEXTURE_2D, irradianceMap);
+	glBindTexture(GL_TEXTURE_2D, engine->irradianceMap);
 	glActiveTexture(GL_TEXTURE8);
-	glBindTexture(GL_TEXTURE_2D, reflectionMap);
-
-	///////////////////////////////////////////////////////////////////////////
-	// draw scene from security camera
-	///////////////////////////////////////////////////////////////////////////
-	// >>> @task 2
-	FboInfo& securityFB = fboList[0];
-	glBindFramebuffer(GL_FRAMEBUFFER, securityFB.framebufferId);
-
-	glViewport(0, 0, securityFB.width, securityFB.height);
-	glClearColor(0.2, 0.2, 0.8, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
-	drawScene(securityCamViewMatrix, securityCamProjectionMatrix);
-
-	labhelper::Material& screen = landingpadModel->m_materials[8];
-	screen.m_emission_texture.gl_id = securityFB.colorTextureTarget;
+	glBindTexture(GL_TEXTURE_2D, engine->reflectionMap);
 	
 
 	///////////////////////////////////////////////////////////////////////////
@@ -349,7 +196,7 @@ void display()
 
 	
 
-	FboInfo& cameraFB = fboList[1];
+	FrameBufferObjectInfo& cameraFB = engine->fboList[1];
 	glBindFramebuffer(GL_FRAMEBUFFER, cameraFB.framebufferId); // to be replaced with another framebuffer when doing post processing
 	glViewport(0, 0, w, h);
 	glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
@@ -357,17 +204,16 @@ void display()
 
 	drawScene(viewMatrix, projectionMatrix); // using both shaderProgram and backgroundProgram
 
-	// camera (obj-model)
 
 	///////////////////////////////////////////////////////////////////////////
 	// Post processing pass(es)
 	///////////////////////////////////////////////////////////////////////////
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glUseProgram(postFxShader);
-	labhelper::setUniformSlow(postFxShader, "time", currentTime);
-	labhelper::setUniformSlow(postFxShader, "currentEffect", currentEffect);
-	labhelper::setUniformSlow(postFxShader, "filterSize", filterSizes[filterSize - 1]);
+	glUseProgram(engine->postFxShader);
+	labhelper::setUniformSlow(engine->postFxShader, "time", currentTime);
+	labhelper::setUniformSlow(engine->postFxShader, "currentEffect", currentEffect);
+	labhelper::setUniformSlow(engine->postFxShader, "filterSize", filterSizes[filterSize - 1]);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, cameraFB.colorTextureTarget);
 	labhelper::drawFullScreenQuad();
@@ -502,9 +348,18 @@ int main(int argc, char* argv[])
 	engine = new Engine();
 
 	tankObject = GameObject();
-	Transformable* transformableComp = new Transformable();
+	Transformable* transformableComp = new Transformable(engine, &tankObject);
+	transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), float(M_PI) / 2.0f);
+	transformableComp->setScale(vec3(1, 1, 1));
+	transformableComp->setTransLate(vec3(1.0f, -9.0f, 1.0f));
+	
+	WanderingComponent* wander = new WanderingComponent(engine, &tankObject);
+	
 	tankObject.addComponent(
 		transformableComp, TRANSFORMABLE
+	);
+	tankObject.addComponent(
+		wander, AI
 	);
 
 	engine->addGameObject(&tankObject);
@@ -516,16 +371,11 @@ int main(int argc, char* argv[])
 	initGL();
 
 	bool stopRendering = false;
-	auto startTime = std::chrono::system_clock::now();
 
-	while(!stopRendering)
+	while(engine->update())
 	{
-		tankObject.update();
-		//GameObject object =  GameObject();
-		//update currentTime
-		std::chrono::duration<float> timeSinceStart = std::chrono::system_clock::now() - startTime;
-		deltaTime = timeSinceStart.count() - currentTime;
-		currentTime = timeSinceStart.count();
+		deltaTime = engine->getDeltaTime();
+		currentTime = engine->getCurrentTime();
 
 		// render to window
 		display();
@@ -537,7 +387,7 @@ int main(int argc, char* argv[])
 		}
 
 		// Swap front and back buffer. This frame will now been displayed.
-		SDL_GL_SwapWindow(g_window);
+		//SDL_GL_SwapWindow(g_window);
 
 		// check events (keyboard among other)
 		stopRendering = handleEvents();
