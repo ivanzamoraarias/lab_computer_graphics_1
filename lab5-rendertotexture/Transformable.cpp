@@ -61,6 +61,7 @@ mat4 Transformable::getTransformationMatrix()
 		rotate(rotateAngle, rotateVector) *
 		scale(scaleVector);
 
+
 	return resultingMatrix;
 }
 

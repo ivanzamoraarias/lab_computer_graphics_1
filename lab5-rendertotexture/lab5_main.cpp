@@ -25,6 +25,11 @@ GameObject tankObject;
 GameObject enemyOneObject;
 GameObject enemyTwoObject;
 
+labhelper::Model* piramid;
+labhelper::Model* simpleCube;
+labhelper::Model* diamante;
+labhelper::Model* tankModel;
+
 SDL_Window* g_window = nullptr;
 static float currentTime = 0.0f;
 static float deltaTime = 0.0f;
@@ -90,16 +95,13 @@ float rotatePlayerAngle = 0.0f;
 
 
 
-void initGL()
+void loadSceneModels()
 {
-	
-	landingpadModel = labhelper::loadModelFromOBJ("../scenes/landingpad.obj");
 	terrainModel = labhelper::loadModelFromOBJ("../scenes/terrain.obj");
-	cameraModel = labhelper::loadModelFromOBJ("../scenes/wheatley.obj");
-	//fighterModel = labhelper::loadModelFromOBJ("../scenes/NewShip.obj");
-	fighterModel = labhelper::loadModelFromOBJ("../scenes/newTank.obj");
-	enemyModel = labhelper::loadModelFromOBJ("../scenes/newTank.obj");
-
+	tankModel = labhelper::loadModelFromOBJ("../scenes/newTank.obj");
+	piramid = labhelper::loadModelFromOBJ("../scenes/piramid.obj");
+	simpleCube = labhelper::loadModelFromOBJ("../scenes/simpleCube.obj");
+	diamante = labhelper::loadModelFromOBJ("../scenes/diamante.obj");
 }
 
 void drawScene(const mat4& view, const mat4& projection)
@@ -401,7 +403,7 @@ void createEnemy() {
 		transformableComp->setTransLate(vec3(i*70.0f, -9.0f, i*70.0f));
 		WanderingComponent* wander = new WanderingComponent(engine, enemy);
 		Renderable* tankRenderable = new Renderable(engine, enemy);
-		tankRenderable->setModel(labhelper::loadModelFromOBJ("../scenes/newTank.obj"));
+		tankRenderable->setModel(tankModel);
 
 		enemy->addComponent(
 			transformableComp, TRANSFORMABLE
@@ -415,18 +417,59 @@ void createEnemy() {
 
 		engine->addGameObject(enemy);
 	}
+
+
+	
+	for (int i = -10; i <= 10; i++) {
+		int randNum = rand() % 100;
+		GameObject* sceneThing = new GameObject();
+
+		Transformable* transformableComp = new Transformable(engine, sceneThing);
+		transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), float(M_PI) / 2.0f);
+		transformableComp->setScale(
+			vec3(3, 3, 3)
+		);
+		transformableComp->setTransLate(
+			vec3(
+				i * 70.0f, 
+				-15.0f, 
+				(200.0f) *sin(i * 70.0f)
+			)
+		);
+		
+		Renderable* tankRenderable = new Renderable(engine, sceneThing);
+		if(randNum%2==0)
+			tankRenderable->setModel(piramid);
+		else if(randNum%3==0)
+			tankRenderable->setModel(simpleCube);
+		else 
+			tankRenderable->setModel(diamante);
+
+		sceneThing->addComponent(
+			transformableComp, TRANSFORMABLE
+		);
+		
+		sceneThing->addComponent(
+			tankRenderable, RENDERABLE
+		);
+
+		engine->addGameObject(sceneThing);
+	}
+
+
 	
 
 	
 }
 int main(int argc, char* argv[])
 {
+	
 	engine = new Engine();
 
 	engine->start();
 	g_window = engine->g_window;
-	initGL();
-
+	loadSceneModels();
+	
 	//createTank();
 	createEnemy();
 	
