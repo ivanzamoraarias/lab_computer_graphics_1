@@ -70,6 +70,11 @@ void Engine::addGameObject(GameObject* o)
 	this->gameObjects.push_back(o);
 }
 
+std::list<GameObject*> Engine::getGameObjects()
+{
+	return this->gameObjects;
+}
+
 void Engine::cleareGameObjects()
 {
 	this->gameObjects.clear();
@@ -83,4 +88,13 @@ float Engine::getDeltaTime()
 float Engine::getCurrentTime()
 {
 	return currentTime;
+}
+
+void Engine::inputHandle()
+{
+	SDL_Event event;
+	ImGuiIO& io = ImGui::GetIO();
+	while (SDL_PollEvent(&event)) {
+		ImGui_ImplSdlGL3_ProcessEvent(&event);
+	}
 }

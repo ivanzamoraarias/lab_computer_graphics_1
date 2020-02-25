@@ -118,9 +118,11 @@ public:
 	void start();
 	bool update();
 	void addGameObject(GameObject* o);
+	std::list<GameObject*> getGameObjects();
 	void cleareGameObjects();
 	float getDeltaTime();
 	float getCurrentTime();
+	void inputHandle();
 	
 private:
 	std::chrono::time_point<std::chrono::system_clock> startTime;

@@ -22,6 +22,8 @@ using std::max;
 
 Engine* engine;
 GameObject tankObject;
+GameObject enemyOneObject;
+GameObject enemyTwoObject;
 
 SDL_Window* g_window = nullptr;
 static float currentTime = 0.0f;
@@ -127,7 +129,8 @@ void drawScene(const mat4& view, const mat4& projection)
 
 	mat4 terrainModelMatrix(1.0f);
 	vec3 translateTerrain(0.0f,-13.0f,0.0f);
-	vec3 scaleTerrain(2.0f,2.0f,2.0f);
+	vec3 scaleTerrain(2.0f, 2.0f, 2.0f);
+	
 	terrainModelMatrix = translate(translateTerrain) * scale(scaleTerrain);
 	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
 	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
@@ -135,31 +138,70 @@ void drawScene(const mat4& view, const mat4& projection)
 
 	labhelper::render(terrainModel);
 
-	// Fighter
-	Transformable* tankTransform = (Transformable*)tankObject.getComponent(componentType::TRANSFORMABLE);
+	terrainModelMatrix = translate(vec3(400.0f, -13.0f, 0.0f)) * scale(scaleTerrain);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * terrainModelMatrix)));
 
-	mat4 tankMatrix = tankTransform->getTransformationMatrix();
+	labhelper::render(terrainModel);
 
-	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix",  projection * view * tankMatrix);
-	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * tankMatrix);
-	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * tankMatrix)));
+	terrainModelMatrix = translate(vec3(-400.0f, -13.0f, 0.0f)) * scale(scaleTerrain);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * terrainModelMatrix)));
 
-	labhelper::render(fighterModel);
+	labhelper::render(terrainModel);
+
+	terrainModelMatrix = translate(vec3(0.0f, -13.0f, 400.0f)) * scale(scaleTerrain);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * terrainModelMatrix)));
+
+	labhelper::render(terrainModel);
+
+	terrainModelMatrix = translate(vec3(0.0f, -13.0f, -400.0f)) * scale(scaleTerrain);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * terrainModelMatrix)));
+
+	labhelper::render(terrainModel);
+
+	terrainModelMatrix = translate(vec3(-400.0f, -13.0f, -400.0f)) * scale(scaleTerrain);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * terrainModelMatrix)));
+
+	labhelper::render(terrainModel);
+
+	terrainModelMatrix = translate(vec3(400.0f, -13.0f, -400.0f)) * scale(scaleTerrain);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * terrainModelMatrix)));
+
+	labhelper::render(terrainModel);
 
 
+	terrainModelMatrix = translate(vec3(-400.0f, -13.0f, 400.0f)) * scale(scaleTerrain);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * terrainModelMatrix)));
 
-		// enemy
-		vec3 enemyscaleVect(1, 1, 1);
-	vec3 enemytranslateVect(20, 4.0f, 0);
-	mat4 enemyfighterModelMatrix =
-		translate(enemytranslateVect) *
-		rotate(float(M_PI) / 2.0f, vec3(0.0f, 1.0f, 0.0f)) *
-		scale(enemyscaleVect);
-	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix", projection * view * enemyfighterModelMatrix);
-	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * enemyfighterModelMatrix);
-	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * enemyfighterModelMatrix)));
+	labhelper::render(terrainModel);
 
-	labhelper::render(enemyModel);
+	terrainModelMatrix = translate(vec3(400.0f, -13.0f, 400.0f)) * scale(scaleTerrain);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
+	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * terrainModelMatrix)));
+
+	labhelper::render(terrainModel);
+
+	for (GameObject* g: engine->getGameObjects()) {
+		Renderable* re = (Renderable*)g->getComponent(componentType::RENDERABLE);
+		if (re == nullptr)
+			continue;
+		re->update();
+	}
+
 }
 
 
@@ -178,6 +220,9 @@ void display()
 
 	mat4 projectionMatrix = perspective(radians(45.0f), float(w) / float(h), 10.0f, 1000.0f);
 	mat4 viewMatrix = lookAt(cameraPosition, cameraPosition + cameraDirection, worldUp);
+
+	engine->projectionMatrix = projectionMatrix;
+	engine->viewMatrix = viewMatrix;
 
 	///////////////////////////////////////////////////////////////////////////
 	// Bind the environment map(s) to unused texture units
@@ -343,33 +388,48 @@ void gui()
 	ImGui::Render();
 }
 
+
+
+void createEnemy() {
+
+	for (int i=-2; i <= 2; i++) {
+		GameObject* enemy = new GameObject();
+
+		Transformable* transformableComp = new Transformable(engine, enemy);
+		transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), float(M_PI) / 2.0f);
+		transformableComp->setScale(vec3(1, 1, 1));
+		transformableComp->setTransLate(vec3(i*70.0f, -9.0f, i*70.0f));
+		WanderingComponent* wander = new WanderingComponent(engine, enemy);
+		Renderable* tankRenderable = new Renderable(engine, enemy);
+		tankRenderable->setModel(labhelper::loadModelFromOBJ("../scenes/newTank.obj"));
+
+		enemy->addComponent(
+			transformableComp, TRANSFORMABLE
+		);
+		enemy->addComponent(
+			wander, AI
+		);
+		enemy->addComponent(
+			tankRenderable, RENDERABLE
+		);
+
+		engine->addGameObject(enemy);
+	}
+	
+
+	
+}
 int main(int argc, char* argv[])
 {
 	engine = new Engine();
 
-	tankObject = GameObject();
-	Transformable* transformableComp = new Transformable(engine, &tankObject);
-	transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), float(M_PI) / 2.0f);
-	transformableComp->setScale(vec3(1, 1, 1));
-	transformableComp->setTransLate(vec3(1.0f, -9.0f, 1.0f));
-	
-	WanderingComponent* wander = new WanderingComponent(engine, &tankObject);
-	
-	tankObject.addComponent(
-		transformableComp, TRANSFORMABLE
-	);
-	tankObject.addComponent(
-		wander, AI
-	);
-
-	engine->addGameObject(&tankObject);
-
 	engine->start();
-
 	g_window = engine->g_window;
-
 	initGL();
 
+	//createTank();
+	createEnemy();
+	
 	bool stopRendering = false;
 
 	while(engine->update())
@@ -399,8 +459,7 @@ int main(int argc, char* argv[])
 	labhelper::freeModel(fighterModel);
 	labhelper::freeModel(sphereModel);
 
-	// Shut down everything. This includes the window and all other subsystems.
-	labhelper::shutDown(g_window);
+	labhelper::shutDown(engine->g_window);
 	return 0;
 }
 

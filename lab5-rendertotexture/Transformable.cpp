@@ -79,30 +79,40 @@ Transformable::~Transformable()
 {
 }
 
+Renderable::Renderable(Engine* e, GameObject* go)
+{
+	this->engine = e;
+	this->gameObject = go;
+}
+
 void Renderable::update()
 {
-	Transformable* tankTransform = 
-		(Transformable*)this->gameObject
+
+	Transformable* myTransform = (Transformable*)this
+		->gameObject
 		->getComponent(componentType::TRANSFORMABLE);
 
-	mat4 tankMatrix = tankTransform->getTransformationMatrix();
+	if (myTransform == nullptr)
+		return;
+
+	mat4 myMatrix = myTransform->getTransformationMatrix();
 
 	labhelper::setUniformSlow(
 		engine->shaderProgram, 
 		"modelViewProjectionMatrix", 
-		engine->projectionMatrix * engine->viewMatrix * tankMatrix
+		engine->projectionMatrix * engine->viewMatrix * myMatrix
 	);
 	labhelper::setUniformSlow(
 		engine->shaderProgram, 
 		"modelViewMatrix", 
-		engine->viewMatrix * tankMatrix
+		engine->viewMatrix * myMatrix
 	);
 
 	labhelper::setUniformSlow(
 		engine->shaderProgram, 
 		"normalMatrix", 
 		inverse(
-			transpose(engine->viewMatrix * tankMatrix)
+			transpose(engine->viewMatrix * myMatrix)
 		)
 	);
 
@@ -123,6 +133,10 @@ WanderingComponent::WanderingComponent(Engine* e, GameObject* go)
 void WanderingComponent::update()
 {
 	int cTime = this->engine->getCurrentTime();
+
+	/*RigidBodyComponent* charRigidBody = (RigidBodyComponent*)this
+		->gameObject
+		->getComponent(componentType::RIGID_BODY);*/
 
 	Transformable* charTransform = (Transformable*)this
 		->gameObject
@@ -157,9 +171,31 @@ void WanderingComponent::update()
 		currentPos + wanderVelosity * delta
 	);
 
+	//charRigidBody->velocity = wanderVelosity;
 
 
 
 	//count++;
 
+}
+
+RigidBodyComponent::RigidBodyComponent(Engine* e, GameObject* go)
+{
+	this->engine = e;
+	this->gameObject = go;
+}
+
+void RigidBodyComponent::update()
+{
+	Transformable* tran =
+		(Transformable*)this->gameObject
+		->getComponent(componentType::TRANSFORMABLE);
+	
+	if (!tran)
+		return;
+	vec3 position = tran->getTranslate();
+	float dt = engine->getDeltaTime();
+
+	tran->setTransLate(position+velocity* dt);
+	//go->position = go->position + velocity * dt;
 }

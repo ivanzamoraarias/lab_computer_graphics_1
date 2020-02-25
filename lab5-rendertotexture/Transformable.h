@@ -36,10 +36,20 @@ public:
    
 };
 
+class RigidBodyComponent : public ObjectComponent
+{
+public:
+	vec3 velocity, acceleration;
+	RigidBodyComponent(Engine* e, GameObject* go);
+	virtual void update();
+};
+
+
 class Renderable : public ObjectComponent {
 private:
 	labhelper::Model* model;
 public:
+	Renderable(Engine* e, GameObject* go);
 	virtual void update();
 	void setModel(labhelper::Model* m);
 
@@ -62,5 +72,14 @@ public:
 class WandeSeekComponent : public ObjectComponent {
 private:
 
+};
+
+class BoxBound : public ObjectComponent {
+private:
+	vec3 topRight;
+	vec3 downLeft;
+public:
+	BoxBound(Engine* e, GameObject* go);
+	virtual void update();
 };
 

@@ -8,6 +8,9 @@ GameObject::GameObject()
 void GameObject::update()
 {
 	for (auto const& x : componentsMap) {
+		if (x.first == componentType::RENDERABLE)
+			continue;
+
 		x.second->update();
 	}
 
@@ -20,6 +23,9 @@ void GameObject::addComponent(ObjectComponent* a, componentType type)
 
 ObjectComponent* GameObject::getComponent(componentType type)
 {
+	if (componentsMap.empty()) {
+		return nullptr;
+	}
 	return componentsMap[type];
 }
 
