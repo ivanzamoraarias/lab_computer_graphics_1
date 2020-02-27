@@ -22,7 +22,8 @@ enum componentType {
 	TRANSFORMABLE,
 	RENDERABLE,
 	AI,
-	RIGID_BODY
+	RIGID_BODY,
+	BOUND
 };
 class ObjectComponent;
 

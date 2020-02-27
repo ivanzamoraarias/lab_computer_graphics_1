@@ -135,9 +135,9 @@ void WanderingComponent::update()
 {
 	int cTime = this->engine->getCurrentTime();
 
-	/*RigidBodyComponent* charRigidBody = (RigidBodyComponent*)this
+	RigidBodyComponent* charRigidBody = (RigidBodyComponent*)this
 		->gameObject
-		->getComponent(componentType::RIGID_BODY);*/
+		->getComponent(componentType::RIGID_BODY);
 
 	Transformable* charTransform = (Transformable*)this
 		->gameObject
@@ -168,11 +168,11 @@ void WanderingComponent::update()
 		charTransform->setRotateAngle(newRotation);
 	}
 
-	charTransform->setTransLate(
+	/*charTransform->setTransLate(
 		currentPos + wanderVelosity * delta
-	);
+	);*/
 
-	//charRigidBody->velocity = wanderVelosity;
+	charRigidBody->velocity = wanderVelosity;
 
 
 
@@ -199,4 +199,38 @@ void RigidBodyComponent::update()
 
 	tran->setTransLate(position+velocity* dt);
 	//go->position = go->position + velocity * dt;
+}
+
+BoxBound::BoxBound(Engine* e, GameObject* go)
+{
+	this->engine = e;
+	this->gameObject = go;
+}
+
+void BoxBound::SetBounds(vec2 front, vec2 back)
+{
+	this->front = front;
+	this->back = back;
+}
+
+void BoxBound::update()
+{
+	Transformable* transf =
+		(Transformable*)this->gameObject
+		->getComponent(TRANSFORMABLE);
+
+	RigidBodyComponent* rigidBody =
+		(RigidBodyComponent*)this->gameObject
+		->getComponent(RIGID_BODY);
+
+	vec3 pos = transf->getTranslate();
+	vec2 twod(pos.x,pos.z);
+	vec2 velosity = rigidBody->velocity;
+	float delta = engine->getDeltaTime();
+	if (((twod.x + velosity.x * delta) >= this->front.x) ||
+		((twod.y + velosity.y * delta) >= this->front.y) ||
+		((twod.x + velosity.x * delta) <= this->back.x) ||
+		((twod.y + velosity.y * delta) <= this->back.y) ) {
+		rigidBody->velocity *= -1.0f;
+	}
 }

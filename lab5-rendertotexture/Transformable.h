@@ -77,10 +77,12 @@ private:
 class BoxBound : public ObjectComponent {
 private:
 	vec2 front;
-	vec2 downbackLeft;
+	vec2 back;
 public:
-	BoxBound(Engine* e, GameObject* go, vec2 front, vec2 back);
+	BoxBound(Engine* e, GameObject* go);
 	
+	void SetBounds(vec2 front, vec2 back);
+
 	virtual void update();
 };
 

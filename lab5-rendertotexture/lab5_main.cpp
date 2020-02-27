@@ -401,10 +401,20 @@ void createEnemy() {
 		transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), float(M_PI) / 2.0f);
 		transformableComp->setScale(vec3(1, 1, 1));
 		transformableComp->setTransLate(vec3(i*70.0f, -9.0f, i*70.0f));
+
+		RigidBodyComponent* rigidBody = new RigidBodyComponent(engine, enemy);
+		BoxBound* mapBound = new BoxBound(engine, enemy);
+		mapBound->SetBounds(
+			vec2(1000,1000), 
+			vec2(-1000, -1000)
+		);
 		WanderingComponent* wander = new WanderingComponent(engine, enemy);
 		Renderable* tankRenderable = new Renderable(engine, enemy);
 		tankRenderable->setModel(tankModel);
 
+		enemy->addComponent(
+			rigidBody, RIGID_BODY
+		);
 		enemy->addComponent(
 			transformableComp, TRANSFORMABLE
 		);
@@ -413,6 +423,9 @@ void createEnemy() {
 		);
 		enemy->addComponent(
 			tankRenderable, RENDERABLE
+		);
+		enemy->addComponent(
+			mapBound, BOUND
 		);
 
 		engine->addGameObject(enemy);
