@@ -23,7 +23,8 @@ enum componentType {
 	RENDERABLE,
 	AI,
 	RIGID_BODY,
-	BOUND
+	BOUND,
+	BEHAVIOR
 };
 class ObjectComponent;
 

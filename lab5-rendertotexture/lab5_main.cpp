@@ -21,9 +21,8 @@ using std::max;
 
 
 Engine* engine;
-GameObject tankObject;
-GameObject enemyOneObject;
-GameObject enemyTwoObject;
+GameObject* playerObject;
+
 
 labhelper::Model* piramid;
 labhelper::Model* simpleCube;
@@ -49,22 +48,21 @@ float point_light_intensity_multiplier = 2000.0f;
 vec3 point_light_color = vec3(1.f, 1.f, 1.f);
 const vec3 lightPosition = vec3(20.0f, 40.0f, 0.0f);
 
-vec3 securityCamPos = vec3(70.0f, 50.0f, -70.0f);
-vec3 securityCamDirection = normalize(-securityCamPos);
-//vec3 cameraPosition(-70.0f, 50.0f, 70.0f);
 vec3 cameraPosition(-70.0f, 0.0f, 70.0f);
 vec3 cameraDirection = normalize(vec3(0.0f) - cameraPosition);
 float cameraSpeed = 10.f;
 
 vec3 worldUp(0.0f, 1.0f, 0.0f);
 
-const std::string model_filename = "../scenes/NewShip.obj";
 labhelper::Model* landingpadModel = nullptr;
 labhelper::Model* fighterModel = nullptr;
 labhelper::Model* enemyModel = nullptr;
 labhelper::Model* sphereModel = nullptr;
-labhelper::Model* cameraModel = nullptr;
 labhelper::Model* terrainModel = nullptr;
+labhelper::Model* bulletModel = nullptr;
+
+
+void createBullet();
 
 
 enum PostProcessingEffect
@@ -102,6 +100,7 @@ void loadSceneModels()
 	piramid = labhelper::loadModelFromOBJ("../scenes/piramid.obj");
 	simpleCube = labhelper::loadModelFromOBJ("../scenes/simpleCube.obj");
 	diamante = labhelper::loadModelFromOBJ("../scenes/diamante.obj");
+	bulletModel = labhelper::loadModelFromOBJ("../scenes/bullet.obj");
 }
 
 void drawScene(const mat4& view, const mat4& projection)
@@ -207,8 +206,6 @@ void drawScene(const mat4& view, const mat4& projection)
 }
 
 
-
-
 void display()
 {
 	int w, h;
@@ -289,6 +286,10 @@ bool handleEvents(void)
 		{
 			showUI = !showUI;
 		}
+
+		if (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_SPACE) {
+			createBullet();
+		}
 	
 		else if(event.type == SDL_MOUSEBUTTONDOWN
 		        && (event.button.button == SDL_BUTTON_LEFT || event.button.button == SDL_BUTTON_RIGHT)
@@ -322,13 +323,7 @@ bool handleEvents(void)
 				//cameraDirection = vec3(pitch * yaw * vec4(cameraDirection, 0.0f));
 				cameraDirection = vec3( yaw * vec4(cameraDirection, 0.0f));
 			}
-			else if(mouseState & SDL_BUTTON(SDL_BUTTON_RIGHT))
-			{
-				mat4 yaw = rotate(rotationSpeed * deltaTime * -delta_x, worldUp);
-				mat4 pitch = rotate(rotationSpeed * deltaTime * -delta_y,
-				                    normalize(cross(securityCamDirection, worldUp)));
-				securityCamDirection = vec3(pitch * yaw * vec4(securityCamDirection, 0.0f));
-			}
+			
 			g_prevMouseCoords.x = event.motion.x;
 			g_prevMouseCoords.y = event.motion.y;
 		}
@@ -355,14 +350,11 @@ bool handleEvents(void)
 		{
 			cameraPosition += deltaTime * cameraSpeed * cameraRight;
 		}
-		if(state[SDL_SCANCODE_Q])
-		{
-			cameraPosition -= deltaTime * cameraSpeed * worldUp;
+		if(state[SDL_SCANCODE_SPACE]){
+			
+			
 		}
-		if(state[SDL_SCANCODE_E])
-		{
-			cameraPosition += deltaTime * cameraSpeed * worldUp;
-		}
+		
 		if (state[SDL_SCANCODE_RIGHT]) {
 			rotatePlayerAngle -= currentTime*0.001f;
 			rotatePlayer = vec3(0.0f,1.0f,0.0f);
@@ -399,7 +391,7 @@ void createEnemy() {
 
 		Transformable* transformableComp = new Transformable(engine, enemy);
 		transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), float(M_PI) / 2.0f);
-		transformableComp->setScale(vec3(1, 1, 1));
+		transformableComp->setScale(vec3(1, 1.5f, 1));
 		transformableComp->setTransLate(vec3(i*70.0f, -9.0f, i*70.0f));
 
 		RigidBodyComponent* rigidBody = new RigidBodyComponent(engine, enemy);
@@ -474,9 +466,75 @@ void createEnemy() {
 
 	
 }
+
+void createBullet() {
+	
+	Transformable* playerTrans =
+		(Transformable*)playerObject->getComponent(TRANSFORMABLE);
+	playerTrans->setTransLate(cameraPosition);
+
+	RigidBodyComponent* rig = 
+		(RigidBodyComponent*)playerObject->getComponent(RIGID_BODY);
+
+	rig->velocity = vec3(cameraDirection.x, 0, cameraDirection.z);
+
+	GameObject* bullet = new GameObject();
+	BulletBehavior* behavior = new BulletBehavior(engine, bullet);
+	behavior->SetOwner(playerObject);
+
+	Renderable* renderBullet = new Renderable(engine, bullet);
+
+	renderBullet->setModel(bulletModel);
+
+	Transformable* transf = new Transformable(engine, bullet);
+	
+	vec3 bPos = vec3();
+	
+	bPos.y = cameraPosition.y - 11;
+	bPos.z = cameraPosition.z + 55;
+	bPos.x = cameraPosition.x + 17;
+
+
+	transf->setTransLate(bPos);
+	 
+	RigidBodyComponent* rigidBody = new RigidBodyComponent(engine, bullet);
+
+	bullet->addComponent(
+		behavior, BEHAVIOR
+	);
+	bullet->addComponent(
+		renderBullet, RENDERABLE
+	);
+	bullet->addComponent(
+		transf, TRANSFORMABLE
+	);
+	bullet->addComponent(
+		rigidBody, RIGID_BODY
+	);
+
+	behavior->Start();
+
+	SDL_Log("Adding Bullet");
+
+	engine->addGameObject(bullet);
+}
+
 int main(int argc, char* argv[])
 {
-	
+	playerObject = new GameObject();
+	Transformable* trsp = new Transformable(engine, playerObject);
+	trsp->setTransLate(cameraPosition);
+
+	RigidBodyComponent* rig = new RigidBodyComponent(engine, playerObject);
+	rig->velocity = vec3(cameraDirection.x,0, cameraDirection.z);
+
+	playerObject->addComponent(
+		trsp, TRANSFORMABLE
+	);
+	playerObject->addComponent(
+		rig, RIGID_BODY
+	);
+
 	engine = new Engine();
 
 	engine->start();
@@ -493,25 +551,18 @@ int main(int argc, char* argv[])
 		deltaTime = engine->getDeltaTime();
 		currentTime = engine->getCurrentTime();
 
-		// render to window
 		display();
 
-		// Render overlay GUI.
 		if(showUI)
 		{
 			gui();
 		}
 
-		// Swap front and back buffer. This frame will now been displayed.
-		//SDL_GL_SwapWindow(g_window);
-
-		// check events (keyboard among other)
 		stopRendering = handleEvents();
 	}
 
 	// Free Models
 	labhelper::freeModel(landingpadModel);
-	labhelper::freeModel(cameraModel);
 	labhelper::freeModel(fighterModel);
 	labhelper::freeModel(sphereModel);
 

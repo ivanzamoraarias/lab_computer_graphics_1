@@ -104,6 +104,8 @@ struct FrameBufferObjectInfo
 class Engine
 {
 public:
+	//bool isUpdating;
+
 	mat4 projectionMatrix;
 	mat4 viewMatrix;
 

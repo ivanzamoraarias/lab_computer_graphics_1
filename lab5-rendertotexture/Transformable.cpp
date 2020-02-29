@@ -234,3 +234,34 @@ void BoxBound::update()
 		rigidBody->velocity *= -1.0f;
 	}
 }
+
+BulletBehavior::BulletBehavior(Engine* e, GameObject* go)
+{
+	this->engine = e;
+	this->gameObject = go;
+}
+
+void BulletBehavior::SetOwner(GameObject* o)
+{
+	this->owner = o;
+}
+
+void BulletBehavior::Start()
+{
+	RigidBodyComponent* ownerBody =
+		(RigidBodyComponent*)this->owner->getComponent(RIGID_BODY);
+	RigidBodyComponent* myBody =
+		(RigidBodyComponent*)this->gameObject->getComponent(RIGID_BODY);
+
+
+	vec3 uniVelosity = normalize(ownerBody->velocity);
+
+	myBody->velocity = uniVelosity*7.0f;
+}
+
+void BulletBehavior::update()
+{
+	
+	
+
+}

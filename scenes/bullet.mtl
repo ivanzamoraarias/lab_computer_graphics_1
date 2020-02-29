@@ -1,0 +1,51 @@
+newmtl Low_poly_UFO:UFO_texture
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd ufo_diffuse.png
+map_Ka ufo_diffuse.png
+Ni 1.50
+Ks 0.00 0.00 0.00
+Ns 10.00
+newmtl Low_poly_UFO:UFO_texture2
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd ufo_diffuse2.png
+map_Ka ufo_diffuse2.png
+Ni 1.50
+Ks 0.00 0.00 0.00
+Ns 10.00
+newmtl blinn1SG
+illum 4
+Kd 0.06 0.00 0.55
+Ka 0.00 0.88 0.24
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.50 0.44 0.08
+newmtl phong1SG
+illum 4
+Kd 0.08 0.39 0.15
+Ka 0.03 0.66 0.17
+Tf 1.00 1.00 1.00
+Ni 0.90
+Ks 0.82 0.76 0.13
+Ns 18.00
+newmtl phong2SG
+illum 4
+Kd 0.40 0.29 0.41
+Ka 0.28 0.28 0.28
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.50 0.50 0.50
+Ns 18.00
+newmtl phong4SG
+illum 4
+Kd 1.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 0.58 0.58 0.58
+Ni 1.00
+Ks 0.50 0.50 0.50
+Ns 18.00

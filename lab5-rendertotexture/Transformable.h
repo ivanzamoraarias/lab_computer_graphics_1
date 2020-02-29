@@ -86,3 +86,16 @@ public:
 	virtual void update();
 };
 
+class BulletBehavior : public ObjectComponent {
+private:
+	GameObject* owner;
+public:
+	BulletBehavior(Engine* e, GameObject* go);
+
+	void SetOwner(GameObject* o);
+
+	void Start();
+
+	virtual void update();
+};
+

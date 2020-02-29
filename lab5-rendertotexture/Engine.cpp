@@ -93,6 +93,8 @@ float Engine::getCurrentTime()
 void Engine::inputHandle()
 {
 	SDL_Event event;
+	bool quitEvent = false;
+
 	ImGuiIO& io = ImGui::GetIO();
 	while (SDL_PollEvent(&event)) {
 		ImGui_ImplSdlGL3_ProcessEvent(&event);
