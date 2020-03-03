@@ -1,12 +1,8 @@
 
-#include "Engine.h"
-
-// STB_IMAGE for loading images of many filetypes
-#include <stb_image.h>
-
 #include <algorithm>
 #include <iostream>
-
+#include "Engine.h"
+#include <stb_image.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 using namespace glm;
@@ -64,6 +60,8 @@ labhelper::Model* bulletModel = nullptr;
 
 void createBullet();
 
+void drawTerrain(const glm::mat4& projection, const glm::mat4& view);
+
 
 enum PostProcessingEffect
 {
@@ -96,42 +94,19 @@ float rotatePlayerAngle = 0.0f;
 void loadSceneModels()
 {
 	terrainModel = labhelper::loadModelFromOBJ("../scenes/terrain.obj");
-	tankModel = labhelper::loadModelFromOBJ("../scenes/newTank.obj");
-	piramid = labhelper::loadModelFromOBJ("../scenes/piramid.obj");
-	simpleCube = labhelper::loadModelFromOBJ("../scenes/simpleCube.obj");
-	diamante = labhelper::loadModelFromOBJ("../scenes/diamante.obj");
+	tankModel = labhelper::loadModelFromOBJ("../scenes/Tank.obj");
+	piramid = labhelper::loadModelFromOBJ("../scenes/pyramid.obj");
+	simpleCube = labhelper::loadModelFromOBJ("../scenes/cube2.obj");
+	diamante = labhelper::loadModelFromOBJ("../scenes/prism.obj");
 	bulletModel = labhelper::loadModelFromOBJ("../scenes/bullet.obj");
 }
 
-void drawScene(const mat4& view, const mat4& projection)
+void drawTerrain(const glm::mat4& projection, const glm::mat4& view)
 {
-	glUseProgram(engine->backgroundProgram);
-	labhelper::setUniformSlow(engine->backgroundProgram, "environment_multiplier", environment_multiplier);
-	labhelper::setUniformSlow(engine->backgroundProgram, "inv_PV", inverse(projection * view));
-	labhelper::setUniformSlow(engine->backgroundProgram, "camera_pos", cameraPosition);
-	labhelper::drawFullScreenQuad();
-
-	glUseProgram(engine->shaderProgram);
-	// Light source
-	vec4 viewSpaceLightPosition = view * vec4(lightPosition, 1.0f);
-	labhelper::setUniformSlow(engine->shaderProgram, "point_light_color", point_light_color);
-	labhelper::setUniformSlow(engine->shaderProgram, "point_light_intensity_multiplier",
-	                          point_light_intensity_multiplier);
-	labhelper::setUniformSlow(engine->shaderProgram, "viewSpaceLightPosition", vec3(viewSpaceLightPosition));
-
-	// Environment
-	labhelper::setUniformSlow(engine->shaderProgram, "environment_multiplier", environment_multiplier);
-
-	// camera
-	labhelper::setUniformSlow(engine->shaderProgram, "viewInverse", inverse(view));
-
-
-	// terrainModel
-
 	mat4 terrainModelMatrix(1.0f);
-	vec3 translateTerrain(0.0f,-13.0f,0.0f);
+	vec3 translateTerrain(0.0f, -13.0f, 0.0f);
 	vec3 scaleTerrain(2.0f, 2.0f, 2.0f);
-	
+
 	terrainModelMatrix = translate(translateTerrain) * scale(scaleTerrain);
 	labhelper::setUniformSlow(engine->shaderProgram, "modelViewProjectionMatrix", projection * view * terrainModelMatrix);
 	labhelper::setUniformSlow(engine->shaderProgram, "modelViewMatrix", view * terrainModelMatrix);
@@ -195,6 +170,34 @@ void drawScene(const mat4& view, const mat4& projection)
 	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", inverse(transpose(view * terrainModelMatrix)));
 
 	labhelper::render(terrainModel);
+}
+
+void drawScene(const mat4& view, const mat4& projection)
+{
+	glUseProgram(engine->backgroundProgram);
+	labhelper::setUniformSlow(engine->backgroundProgram, "environment_multiplier", environment_multiplier);
+	labhelper::setUniformSlow(engine->backgroundProgram, "inv_PV", inverse(projection * view));
+	labhelper::setUniformSlow(engine->backgroundProgram, "camera_pos", cameraPosition);
+	labhelper::drawFullScreenQuad();
+
+	glUseProgram(engine->shaderProgram);
+	// Light source
+	vec4 viewSpaceLightPosition = view * vec4(lightPosition, 1.0f);
+	labhelper::setUniformSlow(engine->shaderProgram, "point_light_color", point_light_color);
+	labhelper::setUniformSlow(engine->shaderProgram, "point_light_intensity_multiplier",
+	                          point_light_intensity_multiplier);
+	labhelper::setUniformSlow(engine->shaderProgram, "viewSpaceLightPosition", vec3(viewSpaceLightPosition));
+
+	// Environment
+	labhelper::setUniformSlow(engine->shaderProgram, "environment_multiplier", environment_multiplier);
+
+	// camera
+	labhelper::setUniformSlow(engine->shaderProgram, "viewInverse", inverse(view));
+
+
+	// terrainModel
+
+	drawTerrain(projection, view);
 
 	for (GameObject* g: engine->getGameObjects()) {
 		Renderable* re = (Renderable*)g->getComponent(componentType::RENDERABLE);
@@ -389,10 +392,15 @@ void createEnemy() {
 	for (int i=-2; i <= 2; i++) {
 		GameObject* enemy = new GameObject();
 
+		Collidable* colli = new Collidable(engine, enemy);
+		colli->setCollidableRadius(20.0f);
+
+		TankBehavior* behavior = new TankBehavior(engine, enemy);
+
 		Transformable* transformableComp = new Transformable(engine, enemy);
 		transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), float(M_PI) / 2.0f);
 		transformableComp->setScale(vec3(1, 1.5f, 1));
-		transformableComp->setTransLate(vec3(i*70.0f, -9.0f, i*70.0f));
+		transformableComp->setTransLate(vec3(i*70.0f, 0.0f, i*70.0f));
 
 		RigidBodyComponent* rigidBody = new RigidBodyComponent(engine, enemy);
 		BoxBound* mapBound = new BoxBound(engine, enemy);
@@ -420,6 +428,15 @@ void createEnemy() {
 			mapBound, BOUND
 		);
 
+		enemy->addComponent(
+			behavior, BEHAVIOR
+		);
+
+		enemy->addComponent(
+			colli, COLLIDABLE
+		);
+
+
 		engine->addGameObject(enemy);
 	}
 
@@ -429,19 +446,25 @@ void createEnemy() {
 		int randNum = rand() % 100;
 		GameObject* sceneThing = new GameObject();
 
+
+		RockBehavior* behavior = new RockBehavior(engine, sceneThing);
+
 		Transformable* transformableComp = new Transformable(engine, sceneThing);
 		transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), float(M_PI) / 2.0f);
 		transformableComp->setScale(
-			vec3(3, 3, 3)
+			vec3(5, 5, 5)
 		);
 		transformableComp->setTransLate(
 			vec3(
 				i * 70.0f, 
-				-15.0f, 
+				-4.0f, 
 				(200.0f) *sin(i * 70.0f)
 			)
 		);
 		
+		Collidable* colli = new Collidable(engine, sceneThing);
+		colli->setCollidableRadius(20.0f);
+
 		Renderable* tankRenderable = new Renderable(engine, sceneThing);
 		if(randNum%2==0)
 			tankRenderable->setModel(piramid);
@@ -453,9 +476,14 @@ void createEnemy() {
 		sceneThing->addComponent(
 			transformableComp, TRANSFORMABLE
 		);
-		
+		sceneThing->addComponent(
+			colli, COLLIDABLE
+		);
 		sceneThing->addComponent(
 			tankRenderable, RENDERABLE
+		);
+		sceneThing->addComponent(
+			behavior, BEHAVIOR
 		);
 
 		engine->addGameObject(sceneThing);
@@ -490,14 +518,21 @@ void createBullet() {
 	
 	vec3 bPos = vec3();
 	
-	bPos.y = cameraPosition.y - 11;
-	bPos.z = cameraPosition.z + 55;
-	bPos.x = cameraPosition.x + 17;
+	//bPos.y = cameraPosition.y - 11;
+	//bPos.z = cameraPosition.z + 55;
+	//bPos.x = cameraPosition.x + 17;
+
+	bPos.y = cameraPosition.y;
+	bPos.z = cameraPosition.z;
+	bPos.x = cameraPosition.x;
 
 
 	transf->setTransLate(bPos);
 	 
 	RigidBodyComponent* rigidBody = new RigidBodyComponent(engine, bullet);
+	
+	Collidable* colli = new Collidable(engine, bullet);
+	colli->setCollidableRadius(10.0f);
 
 	bullet->addComponent(
 		behavior, BEHAVIOR
@@ -510,6 +545,9 @@ void createBullet() {
 	);
 	bullet->addComponent(
 		rigidBody, RIGID_BODY
+	);
+	bullet->addComponent(
+		colli, COLLIDABLE
 	);
 
 	behavior->Start();

@@ -184,6 +184,8 @@ RigidBodyComponent::RigidBodyComponent(Engine* e, GameObject* go)
 {
 	this->engine = e;
 	this->gameObject = go;
+	velocity = vec3(0,0,0);
+	acceleration = vec3(0, 0, 0);
 }
 
 void RigidBodyComponent::update()
@@ -197,7 +199,10 @@ void RigidBodyComponent::update()
 	vec3 position = tran->getTranslate();
 	float dt = engine->getDeltaTime();
 
-	tran->setTransLate(position+velocity* dt);
+	if(acceleration.x == 0 && acceleration.y == 0 && acceleration.z== 0)
+		tran->setTransLate(position+velocity * dt);
+	else 
+		tran->setTransLate(position + velocity + acceleration * dt);
 	//go->position = go->position + velocity * dt;
 }
 
@@ -235,6 +240,18 @@ void BoxBound::update()
 	}
 }
 
+bool BulletBehavior::isOutOfRange()
+{
+	Transformable* myTra =
+		(Transformable*)this->gameObject->getComponent(TRANSFORMABLE);
+
+	vec3 currentPos = myTra->getTranslate();
+
+	double d = distance(currentPos, initialPosition);
+
+	return (d > 500.0f);
+}
+
 BulletBehavior::BulletBehavior(Engine* e, GameObject* go)
 {
 	this->engine = e;
@@ -252,16 +269,161 @@ void BulletBehavior::Start()
 		(RigidBodyComponent*)this->owner->getComponent(RIGID_BODY);
 	RigidBodyComponent* myBody =
 		(RigidBodyComponent*)this->gameObject->getComponent(RIGID_BODY);
+	Transformable* ownerTra =
+		(Transformable*)this->owner->getComponent(TRANSFORMABLE);
 
+	this->initialPosition = ownerTra->getTranslate();
 
 	vec3 uniVelosity = normalize(ownerBody->velocity);
 
-	myBody->velocity = uniVelosity*7.0f;
+	myBody->velocity = uniVelosity;
+	myBody->acceleration = uniVelosity;
 }
 
 void BulletBehavior::update()
 {
-	
-	
 
+	Collidable* myColli =
+		(Collidable*)this->gameObject->getComponent(COLLIDABLE);
+	
+	bool isCollided = myColli->isCollided;
+
+	bool outOfRange = this->isOutOfRange();
+
+	if (outOfRange || isCollided) {
+		SDL_Log("DESTROY BULLET");
+		this->gameObject->Destroy();
+	}
+
+}
+
+Collidable::Collidable(Engine* e, GameObject* go)
+{
+	this->engine = e;
+	this->gameObject = go;
+	this->isCollided = false;
+}
+
+void Collidable::update()
+{
+	Transformable* tr = (Transformable*)this->gameObject->getComponent(TRANSFORMABLE);
+	geometry.x = tr->getTranslate().x;
+	geometry.y = tr->getTranslate().z;
+
+	this->currentColided = nullptr;
+	this->isCollided = false;
+
+	for (GameObject* object : engine->getGameObjects()) {
+		if (object == this->gameObject)
+			continue;
+
+		Collidable* other =
+			(Collidable*)object->getComponent(COLLIDABLE);
+
+		if (!other)
+			continue;
+
+		CollidableGeometry g1 = this->geometry;
+		CollidableGeometry g2 = other->geometry;
+
+		float dx = g1.x - g2.x;
+		float dy = g1.y - g2.y;
+
+		float distance = std::sqrt(dx * dx + dy * dy);
+
+		if (distance < (g1.radius + g2.radius)) {
+			other->isCollided = 1;
+			this->isCollided = 1;
+			this->currentColided = object;
+			other->currentColided = this->gameObject;
+
+			return;
+		}
+	}
+	
+	//this->currentColided = nullptr;
+}
+
+bool Collidable::isObjectCollided()
+{
+	return isCollided;
+}
+
+void Collidable::setCollidableRadius(double r)
+{
+	this->geometry.radius = r;
+}
+
+bool Collidable::isOwner(GameObject* o)
+{
+	return false;
+}
+
+RockBehavior::RockBehavior(Engine* e, GameObject* go)
+{
+	this->engine = e;
+	this->gameObject = go;
+}
+
+void RockBehavior::update()
+{
+	Collidable* myColli =
+		(Collidable*)this->gameObject->getComponent(COLLIDABLE);
+
+	bool isCollided = myColli->isCollided;
+	
+	if (!isCollided || !myColli->currentColided)
+		return;
+
+	ObjectComponent* behavior =
+		myColli->currentColided->getComponent(BEHAVIOR);
+
+	BulletBehavior* t = dynamic_cast<BulletBehavior*>(behavior);
+
+
+	if ( t != nullptr) {
+
+		SDL_Log(":V YES");
+		this->gameObject->Destroy();
+
+	}
+}
+
+TankBehavior::TankBehavior(Engine* e, GameObject* go)
+{
+	this->engine = e;
+	this->gameObject = go;
+}
+
+void TankBehavior::update()
+{
+	Collidable* myColli =
+		(Collidable*)this->gameObject->getComponent(COLLIDABLE);
+
+	bool isCollided = myColli->isCollided;
+
+	if (!isCollided || !myColli->currentColided)
+		return;
+
+	ObjectComponent* behavior =
+		myColli->currentColided->getComponent(BEHAVIOR);
+
+	BulletBehavior* t = dynamic_cast<BulletBehavior*>(behavior);
+
+	RockBehavior* rock = dynamic_cast<RockBehavior*>(behavior);
+
+
+	if (t != nullptr) {
+
+		SDL_Log(":V YES");
+		this->gameObject->Destroy();
+
+	}
+
+	if (rock != nullptr) {
+		RigidBodyComponent* rigidBody =
+			(RigidBodyComponent*)this->gameObject->getComponent(RIGID_BODY);
+		
+		rigidBody->velocity *= -1.0f;
+	}
 }

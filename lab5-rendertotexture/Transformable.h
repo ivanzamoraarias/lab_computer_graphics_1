@@ -89,6 +89,10 @@ public:
 class BulletBehavior : public ObjectComponent {
 private:
 	GameObject* owner;
+	vec3 initialPosition;
+
+	bool isOutOfRange();
+
 public:
 	BulletBehavior(Engine* e, GameObject* go);
 
@@ -98,4 +102,40 @@ public:
 
 	virtual void update();
 };
+
+struct CollidableGeometry {
+	double radius;
+	double x;
+	double y;
+};
+
+class Collidable : public ObjectComponent {
+private:
+	CollidableGeometry geometry;
+public: 
+	bool isCollided;
+	GameObject* currentColided;
+
+	Collidable(Engine* e, GameObject* go);
+	virtual void update();
+	bool isObjectCollided();
+	void setCollidableRadius(double r);
+	bool isOwner(GameObject* o);
+};
+
+class RockBehavior : public ObjectComponent {
+private:
+
+public:
+	RockBehavior(Engine* e, GameObject* go);
+	virtual void update();
+};
+
+class TankBehavior : public ObjectComponent {
+public:
+	TankBehavior(Engine* e, GameObject* go);
+	virtual void update();
+};
+
+
 

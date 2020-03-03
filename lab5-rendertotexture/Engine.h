@@ -9,7 +9,6 @@
 #include <imgui_impl_sdl_gl3.h>
 #include <Model.h>
 #include "hdr.h"
-
 #include "GameObject.h"
 #include <glm/glm.hpp>
 using namespace glm;
@@ -125,6 +124,9 @@ public:
 	float getDeltaTime();
 	float getCurrentTime();
 	void inputHandle();
+
+	template<typename Base, typename T>
+	static bool instanceof(const T*);
 	
 private:
 	std::chrono::time_point<std::chrono::system_clock> startTime;
@@ -137,3 +139,10 @@ private:
 	std::list<GameObject*> gameObjects;
 };
 
+template<typename Base, typename T>
+inline bool Engine::instanceof(const T*)
+{
+	bool res = std::is_base_of<Base, T>::value;
+
+	return std::is_base_of<Base, T>::value;
+}

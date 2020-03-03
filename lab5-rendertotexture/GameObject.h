@@ -24,7 +24,8 @@ enum componentType {
 	AI,
 	RIGID_BODY,
 	BOUND,
-	BEHAVIOR
+	BEHAVIOR,
+	COLLIDABLE
 };
 class ObjectComponent;
 
@@ -37,6 +38,8 @@ private:
 
 public:
 	GameObject();
+
+	void Destroy();
 	void update();
 	void addComponent(ObjectComponent* a, componentType type);
 	ObjectComponent* getComponent(componentType type);

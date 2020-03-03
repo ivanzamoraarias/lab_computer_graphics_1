@@ -5,13 +5,24 @@ GameObject::GameObject()
 {
 }
 
+void GameObject::Destroy()
+{
+	componentsMap.clear();
+}
+
 void GameObject::update()
 {
 	for (auto const& x : componentsMap) {
+		if (x.second == nullptr)
+			continue;
+
 		if (x.first == componentType::RENDERABLE)
 			continue;
 
 		x.second->update();
+
+		if (componentsMap.size() == 0)
+			break;
 	}
 
 }
