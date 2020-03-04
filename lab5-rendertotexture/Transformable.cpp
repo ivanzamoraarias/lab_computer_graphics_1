@@ -168,10 +168,6 @@ void WanderingComponent::update()
 		charTransform->setRotateAngle(newRotation);
 	}
 
-	/*charTransform->setTransLate(
-		currentPos + wanderVelosity * delta
-	);*/
-
 	charRigidBody->velocity = wanderVelosity;
 
 

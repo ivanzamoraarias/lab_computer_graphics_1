@@ -100,3 +100,12 @@ void Engine::inputHandle()
 		ImGui_ImplSdlGL3_ProcessEvent(&event);
 	}
 }
+
+vec2 Engine::getScreenSize()
+{
+	SDL_DisplayMode DM;
+	SDL_GetCurrentDisplayMode(0, &DM);
+	int Width = DM.w;
+	int Height = DM.h;
+	return vec2(Width, Height);
+}

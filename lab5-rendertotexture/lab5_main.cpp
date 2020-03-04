@@ -196,7 +196,6 @@ void drawScene(const mat4& view, const mat4& projection)
 
 
 	// terrainModel
-
 	drawTerrain(projection, view);
 
 	for (GameObject* g: engine->getGameObjects()) {
@@ -206,6 +205,41 @@ void drawScene(const mat4& view, const mat4& projection)
 		re->update();
 	}
 
+	vec2 screenSize = engine->getScreenSize();
+
+	mat4 tankLife = scale(vec3(0.005f,0.005f,0.005f));
+	labhelper::setUniformSlow(
+		engine->shaderProgram, "isBilBoard", 
+		true);
+
+	labhelper::setUniformSlow(
+		engine->shaderProgram, "offset",
+		vec3((screenSize.x/2-1)/screenSize.x,0.9,0));
+
+	labhelper::setUniformSlow(
+		engine->shaderProgram, "modelViewMatrix", 
+		view * tankLife);
+
+	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", transpose(view * tankLife));
+
+	labhelper::render(tankModel);
+
+	
+	labhelper::setUniformSlow(
+		engine->shaderProgram, "offset",
+		vec3((screenSize.x / 3 - 1) / screenSize.x, 0.9, 0));
+
+	labhelper::render(tankModel);
+
+	labhelper::setUniformSlow(
+		engine->shaderProgram, "offset",
+		vec3((screenSize.x / 6 - 1) / screenSize.x, 0.9, 0));
+
+	labhelper::render(tankModel);
+
+	labhelper::setUniformSlow(
+		engine->shaderProgram, "isBilBoard",
+		false);
 }
 
 
@@ -379,9 +413,29 @@ bool handleEvents(void)
 
 void gui()
 {
+	int test=100;
+	bool tt = false;
 	// Inform imgui of new frame
 	ImGui_ImplSdlGL3_NewFrame(g_window);
 
+	ImGui::Text("(%.1f FPS)", ImGui::GetIO().Framerate);
+	ImGui::Text("-------LIFE-------");
+	ImGui::SliderInt("% ", &test, 1, 100);
+	ImGui::Text("Polygon Offset");
+	ImGui::Checkbox("Use polygon offset", &tt);
+	//ImGui::SliderFloat("Factor", &polygonOffset_factor, 0.0f, 10.0f);
+	//ImGui::SliderFloat("Units", &polygonOffset_units, 0.0f, 100.0f);
+	/*ImGui::Text("Clamp Mode");
+	ImGui::RadioButton("Clamp to edge", &shadowMapClampMode, ClampMode::Edge);
+	ImGui::RadioButton("Clamp to border", &shadowMapClampMode, ClampMode::Border);
+	ImGui::Checkbox("Border as shadow", &shadowMapClampBorderShadowed);
+	ImGui::Checkbox("Use spot light", &useSpotLight);
+	ImGui::Checkbox("Use soft falloff", &useSoftFalloff);
+	ImGui::SliderFloat("Inner Deg.", &innerSpotlightAngle, 0.0f, 90.0f);
+	ImGui::SliderFloat("Outer Deg.", &outerSpotlightAngle, 0.0f, 90.0f);
+	ImGui::Checkbox("Use hardware PCF", &useHardwarePCF);
+	ImGui::Checkbox("Manual light only (right-click drag to move)", &lightManualOnly);*/
+	
 	ImGui::Render();
 }
 
@@ -591,10 +645,8 @@ int main(int argc, char* argv[])
 
 		display();
 
-		if(showUI)
-		{
-			gui();
-		}
+		gui();
+		
 
 		stopRendering = handleEvents();
 	}

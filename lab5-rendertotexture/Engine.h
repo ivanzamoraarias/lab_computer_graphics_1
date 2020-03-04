@@ -124,6 +124,7 @@ public:
 	float getDeltaTime();
 	float getCurrentTime();
 	void inputHandle();
+	vec2 getScreenSize();
 
 	template<typename Base, typename T>
 	static bool instanceof(const T*);
