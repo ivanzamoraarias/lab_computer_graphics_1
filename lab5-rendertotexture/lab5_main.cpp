@@ -18,6 +18,8 @@ using std::max;
 
 Engine* engine;
 GameObject* playerObject;
+PlayerBehavior* playerBehavior;
+
 
 int playerLife = 3;
 
@@ -70,6 +72,8 @@ void drawAim(const glm::mat4& view);
 void drawPlayerLife(const glm::mat4& view);
 
 void createEnemy(vec2 pos);
+
+void createEnemyBullet(Engine* engine, GameObject* owner, GameObject* target);
 
 
 enum PostProcessingEffect
@@ -256,7 +260,7 @@ void drawPlayerLife(const glm::mat4& view)
 
 	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", transpose(view * tankLife));
 
-	for (int i = 0; i < playerLife; i++) {
+	for (int i = 0; i < playerBehavior->life; i++) {
 		float newOff = 0.9 - 0.15f * i;
 
 		labhelper::setUniformSlow(
@@ -427,7 +431,7 @@ void gui()
 	ImGui_ImplSdlGL3_NewFrame(g_window);
 
 	ImGui::Text("(%.1f FPS)", ImGui::GetIO().Framerate);
-	ImGui::TextColored(ImVec4(0.0f,1.0f,0.0f,1.0f),"ENEMIES LEFT: 10");
+	ImGui::TextColored(ImVec4(0.0f,1.0f,0.0f,1.0f),"ENEMIES LEFT: %d", playerBehavior->score);
 	//ImGui::SliderFloat("Factor", &polygonOffset_factor, 0.0f, 10.0f);
 	//ImGui::SliderFloat("Units", &polygonOffset_units, 0.0f, 100.0f);
 	/*ImGui::Text("Clamp Mode");
@@ -450,12 +454,14 @@ void createEnemy(vec2 pos) {
 	Collidable* colli = new Collidable(engine, enemy);
 	colli->setCollidableRadius(20.0f);
 
-	//TankBehavior* behavior = new TankBehavior(engine, enemy);
+	TankBehavior* behavior = new TankBehavior(engine, enemy);
+	behavior->bulletModel = bulletModel;
+	behavior->rate = 5;
 
 	Transformable* transformableComp = new Transformable(engine, enemy);
 	transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), radians(-180.0f));
 	transformableComp->setScale(vec3(1, 1.5f, 1));
-	transformableComp->setTransLate(vec3(pos.x, 10.0f, pos.y));
+	transformableComp->setTransLate(vec3(pos.x, 0.0f, pos.y));
 
 	RigidBodyComponent* rigidBody = new RigidBodyComponent(engine, enemy);
 	BoxBound* mapBound = new BoxBound(engine, enemy);
@@ -484,16 +490,65 @@ void createEnemy(vec2 pos) {
 		mapBound, BOUND
 	);
 
-	/*enemy->addComponent(
+	enemy->addComponent(
 		behavior, BEHAVIOR
-	);*/
+	);
 
 	enemy->addComponent(
 		colli, COLLIDABLE
 	);
 
-
 	engine->addGameObject(enemy);
+}
+
+void createEnemyBullet(Engine* e, GameObject* owner, GameObject* target)
+{
+
+	GameObject* bullet = new GameObject();
+	BulletBehavior* behavior = new BulletBehavior(e, bullet);
+	behavior->SetOwner(owner);
+
+	Renderable* renderBullet = new Renderable(e, bullet);
+
+	renderBullet->setModel(bulletModel);
+
+	Transformable* transf = new Transformable(e, bullet);
+	Transformable* ownTransf = (Transformable*)owner->getComponent(TRANSFORMABLE);
+
+	vec3 ownerPos = ownTransf->getTranslate();
+	vec3 bPos = vec3();
+
+	bPos.y = ownerPos.y;
+	bPos.z = ownerPos.z;
+	bPos.x = ownerPos.x;
+
+
+	transf->setTransLate(bPos);
+
+	RigidBodyComponent* rigidBody = new RigidBodyComponent(e, bullet);
+
+	Collidable* colli = new Collidable(e, bullet);
+	colli->setCollidableRadius(10.0f);
+
+	bullet->addComponent(
+		behavior, BEHAVIOR
+	);
+	bullet->addComponent(
+		renderBullet, RENDERABLE
+	);
+	bullet->addComponent(
+		transf, TRANSFORMABLE
+	);
+	bullet->addComponent(
+		rigidBody, RIGID_BODY
+	);
+	bullet->addComponent(
+		colli, COLLIDABLE
+	);
+
+	behavior->Start();
+
+	e->addGameObject(bullet);
 }
 
 void createSceneObjects() {
@@ -505,6 +560,9 @@ void createSceneObjects() {
 		colli->setCollidableRadius(20.0f);
 
 		TankBehavior* behavior = new TankBehavior(engine, enemy);
+		behavior->addFireFunction(&createEnemyBullet);
+		behavior->bulletModel = bulletModel;
+		behavior->rate = (i + 3)*10;
 
 		Transformable* transformableComp = new Transformable(engine, enemy);
 		transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), radians(-180.0f));
@@ -545,7 +603,7 @@ void createSceneObjects() {
 			colli, COLLIDABLE
 		);
 
-
+		
 		engine->addGameObject(enemy);
 	}
 
@@ -554,8 +612,6 @@ void createSceneObjects() {
 	for (int i = -10; i <= 10; i++) {
 		int randNum = rand() % 100;
 		GameObject* sceneThing = new GameObject();
-
-
 		RockBehavior* behavior = new RockBehavior(engine, sceneThing);
 
 		Transformable* transformableComp = new Transformable(engine, sceneThing);
@@ -599,21 +655,21 @@ void createSceneObjects() {
 	}
 
 
-	createEnemy(vec2(1, 1));
+	createEnemy(vec2(50, -50));
 
 	
 }
 
 void createBullet() {
 	
-	Transformable* playerTrans =
+	/*Transformable* playerTrans =
 		(Transformable*)playerObject->getComponent(TRANSFORMABLE);
 	playerTrans->setTransLate(cameraPosition);
 
 	RigidBodyComponent* rig = 
 		(RigidBodyComponent*)playerObject->getComponent(RIGID_BODY);
 
-	rig->velocity = vec3(cameraDirection.x, 0, cameraDirection.z);
+	rig->velocity = vec3(cameraDirection.x, 0, cameraDirection.z);*/
 
 	GameObject* bullet = new GameObject();
 	BulletBehavior* behavior = new BulletBehavior(engine, bullet);
@@ -626,10 +682,6 @@ void createBullet() {
 	Transformable* transf = new Transformable(engine, bullet);
 	
 	vec3 bPos = vec3();
-	
-	//bPos.y = cameraPosition.y - 11;
-	//bPos.z = cameraPosition.z + 55;
-	//bPos.x = cameraPosition.x + 17;
 
 	bPos.y = cameraPosition.y;
 	bPos.z = cameraPosition.z;
@@ -661,20 +713,25 @@ void createBullet() {
 
 	behavior->Start();
 
-	SDL_Log("Adding Bullet");
-
 	engine->addGameObject(bullet);
 }
 
 int main(int argc, char* argv[])
 {
 	playerObject = new GameObject();
-	Transformable* trsp = new Transformable(engine, playerObject);
+	playerBehavior =
+		new PlayerBehavior(engine, playerObject);
+	playerBehavior->life = 3;
+	Transformable* trsp = 
+		new Transformable(engine, playerObject);
 	trsp->setTransLate(cameraPosition);
 
 	RigidBodyComponent* rig = new RigidBodyComponent(engine, playerObject);
 	rig->velocity = vec3(cameraDirection.x,0, cameraDirection.z);
 
+	playerObject->addComponent(
+		playerBehavior, BEHAVIOR
+	);
 	playerObject->addComponent(
 		trsp, TRANSFORMABLE
 	);
@@ -701,6 +758,15 @@ int main(int argc, char* argv[])
 
 		gui();
 		
+
+		Transformable* playerTrans =
+			(Transformable*)playerObject->getComponent(TRANSFORMABLE);
+		playerTrans->setTransLate(cameraPosition);
+
+		RigidBodyComponent* rig =
+			(RigidBodyComponent*)playerObject->getComponent(RIGID_BODY);
+
+		rig->velocity = vec3(cameraDirection.x, 0, cameraDirection.z); 
 
 		handleEvents();
 	}

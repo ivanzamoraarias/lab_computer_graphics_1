@@ -265,6 +265,11 @@ BulletBehavior::BulletBehavior(Engine* e, GameObject* go)
 	this->gameObject = go;
 }
 
+GameObject* BulletBehavior::getOwner()
+{
+	return this->owner;
+}
+
 void BulletBehavior::SetOwner(GameObject* o)
 {
 	this->owner = o;
@@ -298,8 +303,27 @@ void BulletBehavior::update()
 	bool outOfRange = this->isOutOfRange();
 
 	if (outOfRange || isCollided) {
-		SDL_Log("DESTROY BULLET");
-		this->gameObject->Destroy();
+		//SDL_Log("DESTROY BULLET");
+		
+		ObjectComponent* behavior = this->owner->getComponent(BEHAVIOR);
+		PlayerBehavior* player = 
+			dynamic_cast<PlayerBehavior*>(behavior);
+		TankBehavior* tank = dynamic_cast<TankBehavior*>(behavior);
+
+		if (player) {
+			player->score += 10;
+			SDL_Log(">>>>DESTROY");
+			this->gameObject->Destroy();
+			return;
+		}
+		
+		if (tank) {
+			return;
+		}
+		if (behavior) {
+			
+			this->gameObject->Destroy();
+		}
 	}
 
 }
@@ -400,10 +424,32 @@ TankBehavior::TankBehavior(Engine* e, GameObject* go)
 {
 	this->engine = e;
 	this->gameObject = go;
+	this->fireFunction = nullptr;
+}
+
+void TankBehavior::addFireFunction(void(*function)(
+	Engine* engine, 
+	GameObject* owner, 
+	GameObject* target))
+{
+	fireFunction = function;
 }
 
 void TankBehavior::update()
 {
+	
+
+	int cTime = this->engine->getCurrentTime();
+	if (cTime % rate == 0 && count!=cTime) {
+		SDL_Log("CREATE");
+		createTankBullet();
+
+		this->count = cTime;
+	}
+
+	
+
+
 	Collidable* myColli =
 		(Collidable*)this->gameObject->getComponent(COLLIDABLE);
 
@@ -421,9 +467,13 @@ void TankBehavior::update()
 
 
 	if (t != nullptr) {
+		ObjectComponent* ownerBehav = t->getOwner()->getComponent(BEHAVIOR);
+		TankBehavior* ownerTank = dynamic_cast<TankBehavior*>(ownerBehav);
 
-		SDL_Log(":V YES");
-		this->gameObject->Destroy();
+		if (ownerTank)
+			return;
+		if(ownerBehav)
+			this->gameObject->Destroy();
 
 	}
 
@@ -433,6 +483,45 @@ void TankBehavior::update()
 		
 		rigidBody->velocity *= -1.0f;
 	}
+}
+
+void TankBehavior::createTankBullet()
+{
+	GameObject* bullet = new GameObject();
+
+	BulletBehavior* behavior = new BulletBehavior(this->engine, bullet);
+	behavior->SetOwner(this->gameObject);
+
+	Renderable* renderBullet = new Renderable(this->engine, bullet);
+	renderBullet->setModel(this->bulletModel);
+
+	Transformable* transf = new Transformable(this->engine, bullet);
+	Transformable* ownTransf = (Transformable*)this->gameObject->getComponent(TRANSFORMABLE);
+	transf->setTransLate(ownTransf->getTranslate());
+
+	RigidBodyComponent* rigidBody = new RigidBodyComponent(this->engine, bullet);
+
+	Collidable* colli = new Collidable(this->engine, bullet);
+	colli->setCollidableRadius(10.0f);
+
+	bullet->addComponent(
+		behavior, BEHAVIOR
+	);
+	bullet->addComponent(
+		renderBullet, RENDERABLE
+	);
+	bullet->addComponent(
+		transf, TRANSFORMABLE
+	);
+	bullet->addComponent(
+		rigidBody, RIGID_BODY
+	);
+	bullet->addComponent(
+		colli, COLLIDABLE
+	);
+	behavior->Start();
+
+	this->engine->addGameObject(bullet);
 }
 
 WandeSeekComponent::WandeSeekComponent(Engine* e, GameObject* go)
@@ -560,4 +649,31 @@ void WandeSeekComponent::faceToTarget(Transformable* tr, vec3 targetPos)
 	tr->setFaceMatrix(toMat4(toQuat(lookAtTargetMatrix)));
 
 
+}
+
+PlayerBehavior::PlayerBehavior(Engine* e, GameObject* go)
+{
+	this->engine = e;
+	this->gameObject = go;
+	this->score = 0;
+	this->life = 100000;
+}
+
+void PlayerBehavior::setLife(int l)
+{
+	life = l;
+}
+
+void PlayerBehavior::update()
+{
+}
+
+TargetedBullet::TargetedBullet(Engine* e, GameObject* go)
+{
+	this->engine = e;
+	this->gameObject = go;
+}
+
+void TargetedBullet::update()
+{
 }

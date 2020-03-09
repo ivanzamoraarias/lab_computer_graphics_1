@@ -108,6 +108,7 @@ private:
 public:
 	BulletBehavior(Engine* e, GameObject* go);
 
+	GameObject* getOwner();
 	void SetOwner(GameObject* o);
 
 	void Start();
@@ -144,8 +145,37 @@ public:
 };
 
 class TankBehavior : public ObjectComponent {
+private:
+	void (*fireFunction)(Engine* engine, GameObject* owner, GameObject* target);
+	void createTankBullet();
 public:
+	GameObject* target;
+	labhelper::Model* bulletModel;
+	int count;
+	int rate;
+
 	TankBehavior(Engine* e, GameObject* go);
+	void addFireFunction(void(*function)(Engine* engine, GameObject* owner, GameObject* target));
+	virtual void update();
+	
+};
+
+class PlayerBehavior : public ObjectComponent {
+private:
+public:
+	int score;
+	int life;
+	PlayerBehavior(Engine* e, GameObject* go);
+	void setLife(int l);
+	
+	virtual void update();
+
+};
+
+class TargetedBullet : public ObjectComponent {
+private:
+public:
+	TargetedBullet(Engine* e, GameObject* go);
 	virtual void update();
 };
 
