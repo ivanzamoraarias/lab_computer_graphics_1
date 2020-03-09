@@ -19,11 +19,14 @@ using std::max;
 Engine* engine;
 GameObject* playerObject;
 
+int playerLife = 3;
+
 
 labhelper::Model* piramid;
 labhelper::Model* simpleCube;
 labhelper::Model* diamante;
 labhelper::Model* tankModel;
+labhelper::Model* aimModel;
 
 SDL_Window* g_window = nullptr;
 static float currentTime = 0.0f;
@@ -62,6 +65,12 @@ void createBullet();
 
 void drawTerrain(const glm::mat4& projection, const glm::mat4& view);
 
+void drawAim(const glm::mat4& view);
+
+void drawPlayerLife(const glm::mat4& view);
+
+void createEnemy(vec2 pos);
+
 
 enum PostProcessingEffect
 {
@@ -84,9 +93,6 @@ int filterSizes[12] = { 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25 };
 struct FrameBufferObjectInfo;
 std::vector<FrameBufferObjectInfo> fboList;
 
-vec3 movePlayer(0.0f,0.0f,0.0f);
-vec3 rotatePlayer(0.0f, 0.0f, 1.0f);
-float rotatePlayerAngle = 0.0f;
 
 
 
@@ -99,6 +105,7 @@ void loadSceneModels()
 	simpleCube = labhelper::loadModelFromOBJ("../scenes/cube2.obj");
 	diamante = labhelper::loadModelFromOBJ("../scenes/prism.obj");
 	bulletModel = labhelper::loadModelFromOBJ("../scenes/bullet.obj");
+	aimModel = labhelper::loadModelFromOBJ("../scenes/aim.obj");
 }
 
 void drawTerrain(const glm::mat4& projection, const glm::mat4& view)
@@ -207,35 +214,57 @@ void drawScene(const mat4& view, const mat4& projection)
 
 	vec2 screenSize = engine->getScreenSize();
 
-	mat4 tankLife = scale(vec3(0.005f,0.005f,0.005f));
+	drawPlayerLife(view);
+
+	drawAim(view);
+}
+
+void drawAim(const glm::mat4& view)
+{
+	mat4 aimMatrix = scale(vec3(10, 10, 1));
 	labhelper::setUniformSlow(
-		engine->shaderProgram, "isBilBoard", 
+		engine->shaderProgram, "isBilBoard",
 		true);
 
 	labhelper::setUniformSlow(
-		engine->shaderProgram, "offset",
-		vec3((screenSize.x/2-1)/screenSize.x,0.9,0));
+		engine->shaderProgram, "modelViewMatrix",
+		view * aimMatrix);
+
+	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", transpose(view * aimMatrix));
 
 	labhelper::setUniformSlow(
-		engine->shaderProgram, "modelViewMatrix", 
+		engine->shaderProgram, "offset",
+		vec3(0.0f, 0.0f, 0));
+
+	labhelper::render(aimModel);
+
+	labhelper::setUniformSlow(
+		engine->shaderProgram, "isBilBoard",
+		false);
+}
+
+void drawPlayerLife(const glm::mat4& view)
+{
+	mat4 tankLife = scale(vec3(0.005f, 0.005f, 0.005f));
+	labhelper::setUniformSlow(
+		engine->shaderProgram, "isBilBoard",
+		true);
+
+	labhelper::setUniformSlow(
+		engine->shaderProgram, "modelViewMatrix",
 		view * tankLife);
 
 	labhelper::setUniformSlow(engine->shaderProgram, "normalMatrix", transpose(view * tankLife));
 
-	labhelper::render(tankModel);
+	for (int i = 0; i < playerLife; i++) {
+		float newOff = 0.9 - 0.15f * i;
 
-	
-	labhelper::setUniformSlow(
-		engine->shaderProgram, "offset",
-		vec3((screenSize.x / 3 - 1) / screenSize.x, 0.9, 0));
+		labhelper::setUniformSlow(
+			engine->shaderProgram, "offset",
+			vec3(newOff, 0.9, 0));
 
-	labhelper::render(tankModel);
-
-	labhelper::setUniformSlow(
-		engine->shaderProgram, "offset",
-		vec3((screenSize.x / 6 - 1) / screenSize.x, 0.9, 0));
-
-	labhelper::render(tankModel);
+		labhelper::render(tankModel);
+	}
 
 	labhelper::setUniformSlow(
 		engine->shaderProgram, "isBilBoard",
@@ -245,16 +274,20 @@ void drawScene(const mat4& view, const mat4& projection)
 
 void display()
 {
-	int w, h;
-	SDL_GetWindowSize(g_window, &w, &h);
+	vec2 win = engine->getScreenSize();
 
-	for(int i = 0; i < engine->fboList.size(); i++)
-	{
-		if(engine->fboList[i].width != w || engine->fboList[i].height != h)
-			engine->fboList[i].resize(w, h);
+	for(int i = 0; i < engine->fboList.size(); i++) {
+		if(engine->fboList[i].width != win.x || 
+			engine->fboList[i].height != win.y)
+			engine->fboList[i].resize(win.x, win.y);
 	}
 
-	mat4 projectionMatrix = perspective(radians(45.0f), float(w) / float(h), 10.0f, 1000.0f);
+	mat4 projectionMatrix = 
+		perspective(
+			radians(45.0f), 
+			float(win.x) / float(win.y), 
+			10.0f, 1000.0f
+		);
 	mat4 viewMatrix = lookAt(cameraPosition, cameraPosition + cameraDirection, worldUp);
 
 	engine->projectionMatrix = projectionMatrix;
@@ -279,7 +312,7 @@ void display()
 
 	FrameBufferObjectInfo& cameraFB = engine->fboList[1];
 	glBindFramebuffer(GL_FRAMEBUFFER, cameraFB.framebufferId); // to be replaced with another framebuffer when doing post processing
-	glViewport(0, 0, w, h);
+	glViewport(0, 0, win.x, win.y);
 	glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -292,8 +325,8 @@ void display()
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUseProgram(engine->postFxShader);
-	labhelper::setUniformSlow(engine->postFxShader, "time", currentTime);
-	labhelper::setUniformSlow(engine->postFxShader, "currentEffect", currentEffect);
+	labhelper::setUniformSlow(engine->postFxShader, "time", engine->getCurrentTime());
+	labhelper::setUniformSlow(engine->postFxShader, "currentEffect", PostProcessingEffect::None);
 	labhelper::setUniformSlow(engine->postFxShader, "filterSize", filterSizes[filterSize - 1]);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, cameraFB.colorTextureTarget);
@@ -305,11 +338,11 @@ void display()
 	CHECK_GL_ERROR();
 }
 
-bool handleEvents(void)
+void handleEvents(void)
 {
 	// check events (keyboard among other)
 	SDL_Event event;
-	bool quitEvent = false;
+	
 	ImGuiIO& io = ImGui::GetIO();
 	while(SDL_PollEvent(&event))
 	{
@@ -317,58 +350,53 @@ bool handleEvents(void)
 
 		if(event.type == SDL_QUIT || (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_ESCAPE))
 		{
-			quitEvent = true;
-		}
-		if(event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_g)
-		{
-			showUI = !showUI;
+			engine->stop();
+			return;
 		}
 
 		if (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_SPACE) {
 			createBullet();
 		}
-	
-		else if(event.type == SDL_MOUSEBUTTONDOWN
-		        && (event.button.button == SDL_BUTTON_LEFT || event.button.button == SDL_BUTTON_RIGHT)
-		        && (!showUI || !ImGui::GetIO().WantCaptureMouse))
-		{
-			g_isMouseDragging = true;
-			int x;
-			int y;
-			SDL_GetMouseState(&x, &y);
-			g_prevMouseCoords.x = x;
-			g_prevMouseCoords.y = y;
+		else if(event.type == SDL_MOUSEBUTTONDOWN) {
+			SDL_Log("BOTOOOONNNN %d", event.button.button);
+			if (event.button.button == SDL_BUTTON_LEFT)
+				createBullet();
 		}
 
-		uint32_t mouseState = SDL_GetMouseState(NULL, NULL);
-		if(!(mouseState & SDL_BUTTON(SDL_BUTTON_LEFT)) && !(mouseState & SDL_BUTTON(SDL_BUTTON_RIGHT)))
-		{
-			g_isMouseDragging = false;
-		}
 
-		if(event.type == SDL_MOUSEMOTION && g_isMouseDragging)
+		if(event.type == SDL_MOUSEMOTION)
 		{
-			// More info at https://wiki.libsdl.org/SDL_MouseMotionEvent
 			int delta_x = event.motion.x - g_prevMouseCoords.x;
-			int delta_y = event.motion.y - g_prevMouseCoords.y;
-			float rotationSpeed = 0.1f;
-			if(mouseState & SDL_BUTTON(SDL_BUTTON_LEFT))
-			{
-				mat4 yaw = rotate(rotationSpeed * deltaTime * -delta_x, worldUp);
-				mat4 pitch = rotate(rotationSpeed * deltaTime * -delta_y,
-				                    normalize(cross(cameraDirection, worldUp)));
-				//cameraDirection = vec3(pitch * yaw * vec4(cameraDirection, 0.0f));
-				cameraDirection = vec3( yaw * vec4(cameraDirection, 0.0f));
+
+			if (event.motion.x >= engine->windowsSize.x-5) {
+				delta_x = 25;
 			}
+			if (event.motion.x<=0+5) {
+				delta_x = -25;
+			}
+
+			float rotationSpeed = 0.1f;
+			
+			mat4 yaw = rotate(
+				rotationSpeed * deltaTime * -delta_x, 
+				worldUp
+			);
+			
+				
+			cameraDirection = vec3( 
+				yaw * vec4(cameraDirection, 0.0f)
+			);
+			
 			
 			g_prevMouseCoords.x = event.motion.x;
 			g_prevMouseCoords.y = event.motion.y;
+
+			
 		}
 	}
 
 	if(!io.WantCaptureKeyboard)
 	{
-		// check keyboard state (which keys are still pressed)
 		const uint8_t* state = SDL_GetKeyboardState(nullptr);
 		vec3 cameraRight = cross(cameraDirection, worldUp);
 		if(state[SDL_SCANCODE_W])
@@ -387,28 +415,8 @@ bool handleEvents(void)
 		{
 			cameraPosition += deltaTime * cameraSpeed * cameraRight;
 		}
-		if(state[SDL_SCANCODE_SPACE]){
-			
-			
-		}
 		
-		if (state[SDL_SCANCODE_RIGHT]) {
-			rotatePlayerAngle -= currentTime*0.001f;
-			rotatePlayer = vec3(0.0f,1.0f,0.0f);
-		}
-		if (state[SDL_SCANCODE_LEFT]) {
-			rotatePlayerAngle += currentTime*0.001f;
-			rotatePlayer = vec3(0.0f, 1.0f, 0.0f);
-		}
-		if (state[SDL_SCANCODE_UP]) {
-			movePlayer += vec3(0.01f * currentTime, 0.0f, 0.0f);
-		}
-		if (state[SDL_SCANCODE_DOWN]) {
-			movePlayer += vec3(-0.01f*currentTime, 0.0f, 0.0f);
-		}
 	}
-
-	return quitEvent;
 }
 
 void gui()
@@ -419,10 +427,7 @@ void gui()
 	ImGui_ImplSdlGL3_NewFrame(g_window);
 
 	ImGui::Text("(%.1f FPS)", ImGui::GetIO().Framerate);
-	ImGui::Text("-------LIFE-------");
-	ImGui::SliderInt("% ", &test, 1, 100);
-	ImGui::Text("Polygon Offset");
-	ImGui::Checkbox("Use polygon offset", &tt);
+	ImGui::TextColored(ImVec4(0.0f,1.0f,0.0f,1.0f),"ENEMIES LEFT: 10");
 	//ImGui::SliderFloat("Factor", &polygonOffset_factor, 0.0f, 10.0f);
 	//ImGui::SliderFloat("Units", &polygonOffset_units, 0.0f, 100.0f);
 	/*ImGui::Text("Clamp Mode");
@@ -439,9 +444,59 @@ void gui()
 	ImGui::Render();
 }
 
+void createEnemy(vec2 pos) {
+	GameObject* enemy = new GameObject();
+
+	Collidable* colli = new Collidable(engine, enemy);
+	colli->setCollidableRadius(20.0f);
+
+	//TankBehavior* behavior = new TankBehavior(engine, enemy);
+
+	Transformable* transformableComp = new Transformable(engine, enemy);
+	transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), radians(-180.0f));
+	transformableComp->setScale(vec3(1, 1.5f, 1));
+	transformableComp->setTransLate(vec3(pos.x, 10.0f, pos.y));
+
+	RigidBodyComponent* rigidBody = new RigidBodyComponent(engine, enemy);
+	BoxBound* mapBound = new BoxBound(engine, enemy);
+	mapBound->SetBounds(
+		vec2(1000, 1000),
+		vec2(-1000, -1000)
+	);
+	WandeSeekComponent* wander = new WandeSeekComponent(engine, enemy);
+	wander->setTarget(&cameraPosition);
+	Renderable* tankRenderable = new Renderable(engine, enemy);
+	tankRenderable->setModel(tankModel);
+
+	enemy->addComponent(
+		rigidBody, RIGID_BODY
+	);
+	enemy->addComponent(
+		transformableComp, TRANSFORMABLE
+	);
+	enemy->addComponent(
+		wander, AI
+	);
+	enemy->addComponent(
+		tankRenderable, RENDERABLE
+	);
+	enemy->addComponent(
+		mapBound, BOUND
+	);
+
+	/*enemy->addComponent(
+		behavior, BEHAVIOR
+	);*/
+
+	enemy->addComponent(
+		colli, COLLIDABLE
+	);
 
 
-void createEnemy() {
+	engine->addGameObject(enemy);
+}
+
+void createSceneObjects() {
 
 	for (int i=-2; i <= 2; i++) {
 		GameObject* enemy = new GameObject();
@@ -452,7 +507,7 @@ void createEnemy() {
 		TankBehavior* behavior = new TankBehavior(engine, enemy);
 
 		Transformable* transformableComp = new Transformable(engine, enemy);
-		transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), float(M_PI) / 2.0f);
+		transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), radians(-180.0f));
 		transformableComp->setScale(vec3(1, 1.5f, 1));
 		transformableComp->setTransLate(vec3(i*70.0f, 0.0f, i*70.0f));
 
@@ -544,7 +599,7 @@ void createEnemy() {
 	}
 
 
-	
+	createEnemy(vec2(1, 1));
 
 	
 }
@@ -633,8 +688,7 @@ int main(int argc, char* argv[])
 	g_window = engine->g_window;
 	loadSceneModels();
 	
-	//createTank();
-	createEnemy();
+	createSceneObjects();
 	
 	bool stopRendering = false;
 
@@ -648,7 +702,7 @@ int main(int argc, char* argv[])
 		gui();
 		
 
-		stopRendering = handleEvents();
+		handleEvents();
 	}
 
 	// Free Models

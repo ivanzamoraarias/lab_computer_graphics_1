@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtx/rotate_vector.hpp>
+#include <glm/gtx/vector_angle.hpp>
 using namespace glm;
 #include <iostream>
 #include <Model.h>
@@ -13,6 +14,7 @@ using namespace glm;
 class Transformable: public ObjectComponent
 {
 private:
+	mat4 faceMatrix;
 	vec3 translateVector;
 	vec3 scaleVector;
 	vec3 rotateVector;
@@ -30,6 +32,7 @@ public:
 	float getAngle();
 	void setRotate(vec3 rotate, float angle);
 	void setRotateAngle(float angle);
+	void setFaceMatrix(mat4 faceMatrix);
 
 	mat4 getTransformationMatrix();
 
@@ -71,7 +74,16 @@ public:
 
 class WandeSeekComponent : public ObjectComponent {
 private:
-
+	vec3* target;
+	float maxVelosity;
+	int count;
+public:
+	WandeSeekComponent(Engine* e, GameObject* go);
+	virtual void update();
+	void setTarget(vec3* t);
+	vec3 getSeekSteating(Transformable* tr, RigidBodyComponent* rb);
+	vec3 getWanderingStearing(Transformable* tr, RigidBodyComponent* rb);
+	void faceToTarget(Transformable* tr, vec3 targetPos);
 };
 
 class BoxBound : public ObjectComponent {

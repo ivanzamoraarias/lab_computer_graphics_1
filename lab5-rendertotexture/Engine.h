@@ -116,8 +116,11 @@ public:
 
 	SDL_Window* g_window;
 
+	vec2 windowsSize;
+
 	void start();
 	bool update();
+	void stop();
 	void addGameObject(GameObject* o);
 	std::list<GameObject*> getGameObjects();
 	void cleareGameObjects();

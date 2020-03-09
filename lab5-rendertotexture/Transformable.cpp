@@ -54,6 +54,11 @@ void Transformable::setRotateAngle(float angle)
 	this->rotateAngle = angle;
 }
 
+void Transformable::setFaceMatrix(mat4 faceMatrix)
+{
+	this->faceMatrix = faceMatrix;
+}
+
 mat4 Transformable::getTransformationMatrix()
 {
 	mat4 resultingMatrix =
@@ -61,6 +66,10 @@ mat4 Transformable::getTransformationMatrix()
 		rotate(rotateAngle, rotateVector) *
 		scale(scaleVector);
 
+	if (faceMatrix != mat4(0)) {
+		resultingMatrix = 
+			translate(translateVector) * rotate(rotateAngle, rotateVector) * faceMatrix * scale(scaleVector);
+	}
 
 	return resultingMatrix;
 }
@@ -72,6 +81,8 @@ Transformable::Transformable(Engine* e, GameObject* go)
 	this->scaleVector = vec3(1, 1, 1);
 	this->rotateAngle = 0;
 	this->rotateVector = vec3(0, 1, 0);
+
+	this->faceMatrix = mat4(0);
 
 	ObjectComponent::create(e, go);
 }
@@ -145,7 +156,7 @@ void WanderingComponent::update()
 
 	vec3 currentPos = charTransform->getTranslate();
 	vec3 unitatio = normalize(currentPos);
-	float delta = (float)this->engine->getDeltaTime();
+	//float delta = (float)this->engine->getDeltaTime();
 
 	if (cTime % 5 == 0 && count != cTime) {
 		count = cTime;
@@ -422,4 +433,131 @@ void TankBehavior::update()
 		
 		rigidBody->velocity *= -1.0f;
 	}
+}
+
+WandeSeekComponent::WandeSeekComponent(Engine* e, GameObject* go)
+{
+	this->engine = e;
+	this->gameObject = go;
+}
+
+void WandeSeekComponent::update()
+{
+	RigidBodyComponent* charRigidBody = (RigidBodyComponent*)this
+		->gameObject
+		->getComponent(componentType::RIGID_BODY);
+
+	Transformable* charTransform = (Transformable*)this
+		->gameObject
+		->getComponent(componentType::TRANSFORMABLE);
+
+	/*vec3 currentPos = charTransform->getTranslate();
+	vec3 unitatio = normalize(currentPos);*/
+	maxVelosity = 5.0f;
+
+	/*charRigidBody->velocity = 
+		vec3(maxVelosity *unitatio.x,0, 
+			maxVelosity *unitatio.z);*/
+
+	vec3 charPos = charTransform->getTranslate();
+	vec3 targetPos = vec3(target->x, target->y, target->z);
+	float dist = distance(targetPos,charPos);
+
+	if (dist < 100) {
+		
+		faceToTarget(charTransform, targetPos);
+		charRigidBody->velocity =
+			this->getSeekSteating(charTransform, charRigidBody);
+
+		return;
+	}
+
+	
+	charRigidBody->velocity = 
+		this->getWanderingStearing(charTransform, charRigidBody);
+}
+
+void WandeSeekComponent::setTarget(vec3* t)
+{
+	this->target = t;
+}
+
+vec3 WandeSeekComponent::getSeekSteating(Transformable* tr, RigidBodyComponent* rb)
+{
+	vec3 pos = tr->getTranslate();
+	vec3 targ = vec3(target->x, target->y, target->z);
+	vec3 newVelosity = targ - pos;
+	
+
+	newVelosity = normalize(newVelosity) * maxVelosity;
+	
+	return newVelosity;
+}
+
+vec3 WandeSeekComponent::getWanderingStearing(Transformable* tr, RigidBodyComponent* rb)
+{
+	int cTime = this->engine->getCurrentTime();
+	if (cTime % 5 == 0 && count != cTime) {
+		count = cTime;
+		int wanderRadius = 100;
+		int wanderOffset = 200;
+		int wanderRate = 350;
+		float wanderOrientation =
+			rand() % (int)wanderRate + 1;
+		vec3 charPos = tr->getTranslate();
+
+		float charOrientation =
+			atan(charPos.z, charPos.x);
+
+		float targetOrientation =
+			wanderOrientation + charOrientation;
+
+		vec3 targetn =
+			charPos +
+			vec3(
+				wanderOffset * cos(charOrientation),
+				0,
+				wanderOffset * sin(charOrientation)
+			);
+
+
+		targetn +=
+
+			vec3(
+				wanderRadius * cos(targetOrientation),
+				0,
+				wanderRadius * sin(targetOrientation)
+			);
+
+		faceToTarget(tr, targetn);
+
+		vec3 newVelosity = targetn - charPos;
+		newVelosity = normalize(newVelosity) * maxVelosity;
+
+		//SDL_Log("NEW VEL: %d %d", newVelosity.x, newVelosity.z);
+		return newVelosity;
+
+	}
+	//SDL_Log("SAME VEL: %d %d", rb->velocity.x, rb->velocity.z);
+	return rb->velocity;
+}
+
+void WandeSeekComponent::faceToTarget(Transformable* tr, vec3 targetPos)
+{	
+	vec3 charPos = tr->getTranslate();
+	//vec3 targetPos = vec3(target->x, target->y, target->z);
+	vec3 direction = normalize(targetPos - charPos);
+
+	glm::vec3 up(0, 1, 0);
+	
+	GLfloat theta = angle(
+		vec2(targetPos.x, targetPos.z), 
+		vec2(direction.x, direction.z));
+	
+	mat4 lookAtTargetMatrix = 
+		transpose(lookAt(charPos, targetPos, vec3(0,1,0)));
+
+	tr->setFaceMatrix(toMat4(toQuat(lookAtTargetMatrix)));
+
+
 }

@@ -18,11 +18,16 @@ void Engine::start()
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
+	SDL_Log("UNO");
 	// Load program shaders
 	backgroundProgram = labhelper::loadShaderProgram("../lab5-rendertotexture/shaders/background.vert",
 		"../lab5-rendertotexture/shaders/background.frag");
+
+	SDL_Log("DOS");
 	shaderProgram = labhelper::loadShaderProgram("../lab5-rendertotexture/shaders/shading.vert",
 		"../lab5-rendertotexture/shaders/shading.frag");
+
+	SDL_Log("TRES");
 	postFxShader = labhelper::loadShaderProgram("../lab5-rendertotexture/shaders/postFx.vert",
 		"../lab5-rendertotexture/shaders/postFx.frag");
 
@@ -65,6 +70,11 @@ bool Engine::update()
 	return isUpdating;
 }
 
+void Engine::stop()
+{
+	this->isUpdating = false;
+}
+
 void Engine::addGameObject(GameObject* o)
 {
 	this->gameObjects.push_back(o);
@@ -103,9 +113,14 @@ void Engine::inputHandle()
 
 vec2 Engine::getScreenSize()
 {
-	SDL_DisplayMode DM;
-	SDL_GetCurrentDisplayMode(0, &DM);
-	int Width = DM.w;
-	int Height = DM.h;
-	return vec2(Width, Height);
+
+	int w, h;
+	SDL_GetWindowSize(g_window, &w, &h);
+	this->windowsSize.x = w;
+	this->windowsSize.y = h;
+	
+
+	return this->windowsSize;
+
+	
 }
