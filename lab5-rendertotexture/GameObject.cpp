@@ -45,6 +45,10 @@ void GameObject::updateComponent(std::pair< componentType, ObjectComponent*>& pa
 	pair.second->update();
 }
 
+ObjectComponent::~ObjectComponent()
+{
+}
+
 void ObjectComponent::create(Engine* e, GameObject* go)
 {
 	this->engine = e;

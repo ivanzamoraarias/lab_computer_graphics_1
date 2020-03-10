@@ -97,6 +97,11 @@ Renderable::Renderable(Engine* e, GameObject* go)
 	this->gameObject = go;
 }
 
+Renderable::~Renderable()
+{
+	this->model = nullptr;
+}
+
 void Renderable::update()
 {
 
@@ -259,6 +264,10 @@ bool BulletBehavior::isOutOfRange()
 	return (d > 500.0f);
 }
 
+BulletBehavior::BulletBehavior()
+{
+}
+
 BulletBehavior::BulletBehavior(Engine* e, GameObject* go)
 {
 	this->engine = e;
@@ -302,13 +311,21 @@ void BulletBehavior::update()
 
 	bool outOfRange = this->isOutOfRange();
 
+	if (isCollided && (myColli->currentColided == this->owner)) {
+		return;
+	}
+
 	if (outOfRange || isCollided) {
 		//SDL_Log("DESTROY BULLET");
 		
 		ObjectComponent* behavior = this->owner->getComponent(BEHAVIOR);
+		
+
 		PlayerBehavior* player = 
 			dynamic_cast<PlayerBehavior*>(behavior);
 		TankBehavior* tank = dynamic_cast<TankBehavior*>(behavior);
+
+
 
 		if (player) {
 			player->score += 10;
@@ -410,13 +427,11 @@ void RockBehavior::update()
 		myColli->currentColided->getComponent(BEHAVIOR);
 
 	BulletBehavior* t = dynamic_cast<BulletBehavior*>(behavior);
+	TargetedBullet* tb = dynamic_cast<TargetedBullet*>(behavior);
 
 
-	if ( t != nullptr) {
-
-		SDL_Log(":V YES");
+	if ( t != nullptr && tb == nullptr) {
 		this->gameObject->Destroy();
-
 	}
 }
 
@@ -489,7 +504,7 @@ void TankBehavior::createTankBullet()
 {
 	GameObject* bullet = new GameObject();
 
-	BulletBehavior* behavior = new BulletBehavior(this->engine, bullet);
+	TargetedBullet* behavior = new TargetedBullet(this->engine, bullet);
 	behavior->SetOwner(this->gameObject);
 
 	Renderable* renderBullet = new Renderable(this->engine, bullet);
@@ -549,7 +564,7 @@ void WandeSeekComponent::update()
 			maxVelosity *unitatio.z);*/
 
 	vec3 charPos = charTransform->getTranslate();
-	vec3 targetPos = vec3(target->x, target->y, target->z);
+	vec3 targetPos = vec3(target->x, 0.0f, target->z);
 	float dist = distance(targetPos,charPos);
 
 	if (dist < 100) {
@@ -666,7 +681,12 @@ void PlayerBehavior::setLife(int l)
 
 void PlayerBehavior::update()
 {
+	Collidable* col = (Collidable*)this->gameObject->getComponent(COLLIDABLE);
+	if (col->currentColided)
+		SDL_Log("HOLAAA");
 }
+
+
 
 TargetedBullet::TargetedBullet(Engine* e, GameObject* go)
 {
@@ -676,4 +696,32 @@ TargetedBullet::TargetedBullet(Engine* e, GameObject* go)
 
 void TargetedBullet::update()
 {
+	Collidable* myColli =
+		(Collidable*)this->gameObject->getComponent(COLLIDABLE);
+
+	bool isCollided = myColli->isCollided;
+
+	
+	bool outOfRange = this->isOutOfRange();
+
+	if (outOfRange) {
+		this->gameObject->Destroy();
+		return;
+	}
+
+	if (isCollided) {
+		GameObject* other = myColli->currentColided;
+		if (other == this->getOwner())
+			return;
+		ObjectComponent* behavior =
+			other->getComponent(BEHAVIOR);
+		PlayerBehavior* player =
+			dynamic_cast<PlayerBehavior*>(behavior);
+
+		if (player) {
+			player->life -= 1;
+			this->gameObject->Destroy();
+			return;
+		}
+	}
 }

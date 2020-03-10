@@ -103,8 +103,6 @@ struct FrameBufferObjectInfo
 class Engine
 {
 public:
-	//bool isUpdating;
-
 	mat4 projectionMatrix;
 	mat4 viewMatrix;
 
@@ -128,6 +126,18 @@ public:
 	float getCurrentTime();
 	void inputHandle();
 	vec2 getScreenSize();
+
+	template<typename T>
+	void deleteObjectsByBehavior(componentType ct) {
+		for (GameObject* go : this->gameObjects) {
+			ObjectComponent*c = go->getComponent(ct);
+
+			T t = dynamic_cast<T>(c);
+			if (t != nullptr) {
+				go->Destroy();
+			}
+		}
+	}
 
 	template<typename Base, typename T>
 	static bool instanceof(const T*);

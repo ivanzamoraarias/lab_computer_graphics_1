@@ -54,6 +54,7 @@ protected:
 	Engine* engine;
 
 public:
+	~ObjectComponent();
 	virtual void create(Engine* e, GameObject* go);
 	virtual void update() = 0;
 

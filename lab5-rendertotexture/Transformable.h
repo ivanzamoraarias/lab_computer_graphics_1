@@ -53,8 +53,10 @@ private:
 	labhelper::Model* model;
 public:
 	Renderable(Engine* e, GameObject* go);
+	~Renderable();
 	virtual void update();
 	void setModel(labhelper::Model* m);
+	
 
 };
 
@@ -103,13 +105,13 @@ private:
 	GameObject* owner;
 	vec3 initialPosition;
 
-	bool isOutOfRange();
-
 public:
+	BulletBehavior();
 	BulletBehavior(Engine* e, GameObject* go);
 
 	GameObject* getOwner();
 	void SetOwner(GameObject* o);
+	bool isOutOfRange();
 
 	void Start();
 
@@ -172,7 +174,7 @@ public:
 
 };
 
-class TargetedBullet : public ObjectComponent {
+class TargetedBullet : public BulletBehavior {
 private:
 public:
 	TargetedBullet(Engine* e, GameObject* go);

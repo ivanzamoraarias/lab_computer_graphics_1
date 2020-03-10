@@ -20,6 +20,8 @@ Engine* engine;
 GameObject* playerObject;
 PlayerBehavior* playerBehavior;
 
+GameObject* gameOverObject;
+
 
 int playerLife = 3;
 
@@ -61,9 +63,14 @@ labhelper::Model* enemyModel = nullptr;
 labhelper::Model* sphereModel = nullptr;
 labhelper::Model* terrainModel = nullptr;
 labhelper::Model* bulletModel = nullptr;
+labhelper::Model* gameOverModel = nullptr;
 
 
 void createBullet();
+
+void createPlayer();
+
+void GameOverCheck();
 
 void drawTerrain(const glm::mat4& projection, const glm::mat4& view);
 
@@ -110,6 +117,7 @@ void loadSceneModels()
 	diamante = labhelper::loadModelFromOBJ("../scenes/prism.obj");
 	bulletModel = labhelper::loadModelFromOBJ("../scenes/bullet.obj");
 	aimModel = labhelper::loadModelFromOBJ("../scenes/aim.obj");
+	gameOverModel = labhelper::loadModelFromOBJ("../scenes/gameOver.obj");
 }
 
 void drawTerrain(const glm::mat4& projection, const glm::mat4& view)
@@ -430,8 +438,10 @@ void gui()
 	// Inform imgui of new frame
 	ImGui_ImplSdlGL3_NewFrame(g_window);
 
-	ImGui::Text("(%.1f FPS)", ImGui::GetIO().Framerate);
+	
 	ImGui::TextColored(ImVec4(0.0f,1.0f,0.0f,1.0f),"ENEMIES LEFT: %d", playerBehavior->score);
+	
+	
 	//ImGui::SliderFloat("Factor", &polygonOffset_factor, 0.0f, 10.0f);
 	//ImGui::SliderFloat("Units", &polygonOffset_units, 0.0f, 100.0f);
 	/*ImGui::Text("Clamp Mode");
@@ -552,7 +562,7 @@ void createEnemyBullet(Engine* e, GameObject* owner, GameObject* target)
 }
 
 void createSceneObjects() {
-
+	// hasta <=2 original
 	for (int i=-2; i <= 2; i++) {
 		GameObject* enemy = new GameObject();
 
@@ -567,15 +577,20 @@ void createSceneObjects() {
 		Transformable* transformableComp = new Transformable(engine, enemy);
 		transformableComp->setRotate(vec3(0.0f, 1.0f, 0.0f), radians(-180.0f));
 		transformableComp->setScale(vec3(1, 1.5f, 1));
-		transformableComp->setTransLate(vec3(i*70.0f, 0.0f, i*70.0f));
+		if(i == 0)
+			transformableComp->setTransLate(vec3(200.0f, 0.0f, 200.0f));
+		else
+			transformableComp->setTransLate(vec3(i*70.0f, 0.0f, i*70.0f));
 
 		RigidBodyComponent* rigidBody = new RigidBodyComponent(engine, enemy);
 		BoxBound* mapBound = new BoxBound(engine, enemy);
 		mapBound->SetBounds(
-			vec2(1000,1000), 
-			vec2(-1000, -1000)
+			vec2(700,700), 
+			vec2(-700, -700)
 		);
-		WanderingComponent* wander = new WanderingComponent(engine, enemy);
+		//WanderingComponent* wander = new WanderingComponent(engine, enemy);
+		WandeSeekComponent* wander = new WandeSeekComponent(engine, enemy);
+		wander->setTarget(&cameraPosition);
 		Renderable* tankRenderable = new Renderable(engine, enemy);
 		tankRenderable->setModel(tankModel);
 
@@ -608,7 +623,7 @@ void createSceneObjects() {
 	}
 
 
-	
+	// int i = -10; i <= 10; i++
 	for (int i = -10; i <= 10; i++) {
 		int randNum = rand() % 100;
 		GameObject* sceneThing = new GameObject();
@@ -655,21 +670,12 @@ void createSceneObjects() {
 	}
 
 
-	createEnemy(vec2(50, -50));
+	//createEnemy(vec2(50, -50));
 
 	
 }
 
 void createBullet() {
-	
-	/*Transformable* playerTrans =
-		(Transformable*)playerObject->getComponent(TRANSFORMABLE);
-	playerTrans->setTransLate(cameraPosition);
-
-	RigidBodyComponent* rig = 
-		(RigidBodyComponent*)playerObject->getComponent(RIGID_BODY);
-
-	rig->velocity = vec3(cameraDirection.x, 0, cameraDirection.z);*/
 
 	GameObject* bullet = new GameObject();
 	BulletBehavior* behavior = new BulletBehavior(engine, bullet);
@@ -716,18 +722,21 @@ void createBullet() {
 	engine->addGameObject(bullet);
 }
 
-int main(int argc, char* argv[])
+void createPlayer()
 {
 	playerObject = new GameObject();
 	playerBehavior =
 		new PlayerBehavior(engine, playerObject);
 	playerBehavior->life = 3;
-	Transformable* trsp = 
+	Transformable* trsp =
 		new Transformable(engine, playerObject);
 	trsp->setTransLate(cameraPosition);
 
 	RigidBodyComponent* rig = new RigidBodyComponent(engine, playerObject);
-	rig->velocity = vec3(cameraDirection.x,0, cameraDirection.z);
+	rig->velocity = vec3(cameraDirection.x, 0, cameraDirection.z);
+
+	Collidable* coll = new Collidable(engine, playerObject);
+	coll->setCollidableRadius(20.0f);
 
 	playerObject->addComponent(
 		playerBehavior, BEHAVIOR
@@ -739,16 +748,50 @@ int main(int argc, char* argv[])
 		rig, RIGID_BODY
 	);
 
-	engine = new Engine();
+	playerObject->addComponent(
+		coll, COLLIDABLE
+	);
 
+
+	engine->addGameObject(playerObject);
+}
+
+void GameOverCheck()
+{
+	if (playerBehavior->life <= 0 && gameOverObject == nullptr) {
+		cameraPosition = vec3(0.0f, 0.0f, 70.0f);
+		cameraDirection = normalize(vec3(0.0f) - cameraPosition);
+		engine->deleteObjectsByBehavior<TankBehavior*>(BEHAVIOR);
+
+		gameOverObject = new GameObject();
+
+		Transformable* gameOverTransf = new Transformable(engine, gameOverObject);
+		gameOverTransf->setTransLate(vec3(0.0f, 10.0f, 0.0f));
+
+		Renderable* gameOverRender = new Renderable(engine, gameOverObject);
+		gameOverRender->setModel(gameOverModel);
+
+		gameOverObject->addComponent(gameOverRender, RENDERABLE);
+		gameOverObject->addComponent(gameOverTransf, TRANSFORMABLE);
+
+		engine->addGameObject(gameOverObject);
+	}
+}
+
+int main(int argc, char* argv[])
+{
+	engine = new Engine();
 	engine->start();
+
 	g_window = engine->g_window;
 	loadSceneModels();
+
+	createPlayer();
 	
 	createSceneObjects();
-	
-	bool stopRendering = false;
 
+
+	
 	while(engine->update())
 	{
 		deltaTime = engine->getDeltaTime();
@@ -759,6 +802,8 @@ int main(int argc, char* argv[])
 		gui();
 		
 
+		handleEvents();
+		
 		Transformable* playerTrans =
 			(Transformable*)playerObject->getComponent(TRANSFORMABLE);
 		playerTrans->setTransLate(cameraPosition);
@@ -766,9 +811,19 @@ int main(int argc, char* argv[])
 		RigidBodyComponent* rig =
 			(RigidBodyComponent*)playerObject->getComponent(RIGID_BODY);
 
-		rig->velocity = vec3(cameraDirection.x, 0, cameraDirection.z); 
+		rig->velocity = vec3(cameraDirection.x, 0, cameraDirection.z);
 
-		handleEvents();
+
+		
+		GameOverCheck();
+
+		if (engine->getGameObjects().size() < 10) {
+			float posX = rand() % 500 + 1;
+			float posY = rand() % 500 + 1;
+
+			vec2 newPosEnemy(posX, posY);
+			createEnemy(newPosEnemy);
+		}
 	}
 
 	// Free Models
