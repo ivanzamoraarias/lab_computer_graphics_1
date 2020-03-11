@@ -64,6 +64,7 @@ labhelper::Model* sphereModel = nullptr;
 labhelper::Model* terrainModel = nullptr;
 labhelper::Model* bulletModel = nullptr;
 labhelper::Model* gameOverModel = nullptr;
+labhelper::Model* ufoModel = nullptr;
 
 
 void createBullet();
@@ -101,8 +102,7 @@ int filterSize = 1;
 int filterSizes[12] = { 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25 };
 
 
-struct FrameBufferObjectInfo;
-std::vector<FrameBufferObjectInfo> fboList;
+
 
 
 
@@ -435,25 +435,46 @@ void gui()
 {
 	int test=100;
 	bool tt = false;
+	int currentTime = engine->getCurrentTime();
 	// Inform imgui of new frame
 	ImGui_ImplSdlGL3_NewFrame(g_window);
 
 	
-	ImGui::TextColored(ImVec4(0.0f,1.0f,0.0f,1.0f),"ENEMIES LEFT: %d", playerBehavior->score);
+	ImGui::TextColored(ImVec4(0.0f,1.0f,0.0f,1.0f),"SCORE : %d", playerBehavior->score);
 	
+	if (playerBehavior->life == 3) {
+		ImGui::Text("/ ( O w O ) /");
+		if (currentTime % 2 == 0)
+			ImGui::Text("----____----____----____----____--------____----____----____----____--------____----____----____----____----");
+		else
+			ImGui::Text("____----____----________----____----________----____----________----____----________----____----________----____----____");
+
+	}
+	else if (playerBehavior->life == 2) {
+		ImGui::Text("*( > _ < )*");
+		if (currentTime % 2 == 0)
+			ImGui::Text("--__--__--__--__--__--__--__--__--__--__--__--__--__--__--__--__--");
+		else
+			ImGui::Text("__--__--__--__--__--__--__--__--__--__--__--__--__--__--__--__--__--__--__--__--");
+
+	}
+	else if (playerBehavior->life == 1) {
+		ImGui::Text("m ( ; _ ; ) m");
+		if (currentTime % 2 == 0)
+			ImGui::Text("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_");
+		else
+			ImGui::Text("_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-");
+
+	}
+	else {
+		ImGui::Text("( TT _ TT )");
+		
+		ImGui::Text("______________________________________________________");
+		
+	}
+
+
 	
-	//ImGui::SliderFloat("Factor", &polygonOffset_factor, 0.0f, 10.0f);
-	//ImGui::SliderFloat("Units", &polygonOffset_units, 0.0f, 100.0f);
-	/*ImGui::Text("Clamp Mode");
-	ImGui::RadioButton("Clamp to edge", &shadowMapClampMode, ClampMode::Edge);
-	ImGui::RadioButton("Clamp to border", &shadowMapClampMode, ClampMode::Border);
-	ImGui::Checkbox("Border as shadow", &shadowMapClampBorderShadowed);
-	ImGui::Checkbox("Use spot light", &useSpotLight);
-	ImGui::Checkbox("Use soft falloff", &useSoftFalloff);
-	ImGui::SliderFloat("Inner Deg.", &innerSpotlightAngle, 0.0f, 90.0f);
-	ImGui::SliderFloat("Outer Deg.", &outerSpotlightAngle, 0.0f, 90.0f);
-	ImGui::Checkbox("Use hardware PCF", &useHardwarePCF);
-	ImGui::Checkbox("Manual light only (right-click drag to move)", &lightManualOnly);*/
 	
 	ImGui::Render();
 }
@@ -672,6 +693,41 @@ void createSceneObjects() {
 
 	//createEnemy(vec2(50, -50));
 
+
+	/*GameObject* UFO = new GameObject();
+	Renderable* ufoRender = new Renderable(engine, UFO);
+	ufoRender->setModel(ufoModel);
+
+	Transformable* ufoTransformable = 
+		new Transformable(engine, UFO);
+	ufoTransformable->setTransLate(vec3(-350,0,10));
+
+	UfoBehavior* ufoBehavior =
+		new UfoBehavior(engine, UFO);
+	vec3 setofpoints[] = {
+		vec3(-300,0,-10),
+		vec3(-30,0,20),
+		vec3(10,0,-30),
+		vec3(20,0,40),
+		vec3(70,0,-20)
+	};
+
+	ufoBehavior->setPoints(setofpoints);
+
+	UFO->addComponent(
+		ufoBehavior, BEHAVIOR
+	);
+
+	UFO->addComponent(
+		ufoTransformable, TRANSFORMABLE
+	);
+
+	UFO->addComponent(
+		ufoRender, RENDERABLE
+	);
+
+
+	engine->addGameObject(UFO);*/
 	
 }
 

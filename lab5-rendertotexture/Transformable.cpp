@@ -725,3 +725,47 @@ void TargetedBullet::update()
 		}
 	}
 }
+
+UfoBehavior::UfoBehavior(Engine* e, GameObject* go)
+{
+	this->engine = e;
+	this->gameObject = go;
+	this->currentPoint = 0;
+}
+
+void UfoBehavior::setPoints(vec3(&p)[5])
+{
+	for (int i = 0; i < 5; i++) {
+		this->points[i] = p[i];
+	}
+}
+
+void UfoBehavior::update()
+{
+	/*if (this->transform == nullptr) {
+		this->transform = (Transformable*)this->gameObject
+			->getComponent(TRANSFORMABLE);
+	}
+
+	vec3 currentPos = this->transform->getTranslate();
+	if (currentPos == this->points[currentPoint]) {
+		if (currentPoint + 1 >= sizeof this->points)
+			currentPoint = 0;
+		else
+			currentPoint += 1;
+	}
+
+
+	this->seekPoint(this->points[currentPoint]);*/
+}
+
+vec3 UfoBehavior::seekPoint(vec3 target)
+{
+	vec3 pos = transform->getTranslate();
+	//vec3 targ = vec3(target.x, target.y, target->z);
+	vec3 newVelosity = target - pos;
+
+
+	newVelosity = normalize(newVelosity) * maxVelosity;
+	return vec3();
+}
