@@ -183,14 +183,17 @@ public:
 
 class UfoBehavior : public ObjectComponent {
 public:
-	vec3 points[5];
+	vec3 points[9];
 	int currentPoint;
 	float maxVelosity;
 	UfoBehavior(Engine* e, GameObject* go);
-	void setPoints(vec3 (&points)[5]);
+	void setPoints(vec3 (&points)[9]);
+	void setTransform(Transformable* t);
+	void setRigidBody(RigidBodyComponent* rb);
 	virtual void update();
 private:
 	Transformable* transform;
+	RigidBodyComponent* rigidBody;
 	vec3 seekPoint(vec3 target);
 
 };

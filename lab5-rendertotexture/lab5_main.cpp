@@ -1,4 +1,12 @@
 
+/*
+this project is based on 
+the computer graphics laboratory tutorial 5
+at Chalmers University of Technology
+http://www.cse.chalmers.se/edu/course/TDA362/tutorials/lab5.html
+
+*/
+
 #include <algorithm>
 #include <iostream>
 #include "Engine.h"
@@ -118,6 +126,8 @@ void loadSceneModels()
 	bulletModel = labhelper::loadModelFromOBJ("../scenes/bullet.obj");
 	aimModel = labhelper::loadModelFromOBJ("../scenes/aim.obj");
 	gameOverModel = labhelper::loadModelFromOBJ("../scenes/gameOver.obj");
+	ufoModel = labhelper::loadModelFromOBJ("../scenes/ufo.obj");
+
 }
 
 void drawTerrain(const glm::mat4& projection, const glm::mat4& view)
@@ -694,25 +704,38 @@ void createSceneObjects() {
 	//createEnemy(vec2(50, -50));
 
 
-	/*GameObject* UFO = new GameObject();
+	GameObject* UFO = new GameObject();
 	Renderable* ufoRender = new Renderable(engine, UFO);
 	ufoRender->setModel(ufoModel);
 
+	RigidBodyComponent* ufoRigidBody =
+		new RigidBodyComponent(engine, UFO);
+
 	Transformable* ufoTransformable = 
 		new Transformable(engine, UFO);
-	ufoTransformable->setTransLate(vec3(-350,0,10));
+	ufoTransformable->setTransLate(
+		vec3(-350,0,10)
+	);
 
 	UfoBehavior* ufoBehavior =
 		new UfoBehavior(engine, UFO);
 	vec3 setofpoints[] = {
-		vec3(-300,0,-10),
-		vec3(-30,0,20),
-		vec3(10,0,-30),
-		vec3(20,0,40),
-		vec3(70,0,-20)
+		vec3(-300.0f,0.0f,-10.0f),
+		vec3(-30.0f,0.0f,20.0f),
+		vec3(10.0f,0.0f,-30.0f),
+		vec3(20.0f,0.0f,40.0f),
+		vec3(100.0f,0.0f,-20.0f),
+
+		vec3(120.0f,0.0f,-200.0f),
+		vec3(40.0f,0.0f,-100.0f),
+		vec3(0.0f,0.0f,-300.0f),
+		vec3(-200.0f,0.0f,-200.0f)
 	};
 
+	ufoBehavior->maxVelosity = 50;
 	ufoBehavior->setPoints(setofpoints);
+	ufoBehavior->setTransform(ufoTransformable);
+	ufoBehavior->setRigidBody(ufoRigidBody);
 
 	UFO->addComponent(
 		ufoBehavior, BEHAVIOR
@@ -726,8 +749,11 @@ void createSceneObjects() {
 		ufoRender, RENDERABLE
 	);
 
+	UFO->addComponent(
+		ufoRigidBody, RIGID_BODY
+	);
 
-	engine->addGameObject(UFO);*/
+	engine->addGameObject(UFO);
 	
 }
 

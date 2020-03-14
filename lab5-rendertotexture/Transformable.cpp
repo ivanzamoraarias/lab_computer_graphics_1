@@ -202,6 +202,7 @@ RigidBodyComponent::RigidBodyComponent(Engine* e, GameObject* go)
 
 void RigidBodyComponent::update()
 {
+
 	Transformable* tran =
 		(Transformable*)this->gameObject
 		->getComponent(componentType::TRANSFORMABLE);
@@ -565,7 +566,7 @@ void WandeSeekComponent::update()
 
 	vec3 charPos = charTransform->getTranslate();
 	vec3 targetPos = vec3(target->x, 0.0f, target->z);
-	float dist = distance(targetPos,charPos);
+	double dist = distance(targetPos,charPos);
 
 	if (dist < 100) {
 		
@@ -733,30 +734,40 @@ UfoBehavior::UfoBehavior(Engine* e, GameObject* go)
 	this->currentPoint = 0;
 }
 
-void UfoBehavior::setPoints(vec3(&p)[5])
+void UfoBehavior::setPoints(vec3(&p)[9])
 {
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < 9; i++) {
 		this->points[i] = p[i];
 	}
 }
 
+void UfoBehavior::setTransform(Transformable* t)
+{
+	this->transform = t;
+}
+
+void UfoBehavior::setRigidBody(RigidBodyComponent* rb)
+{
+	this->rigidBody = rb;
+}
+
 void UfoBehavior::update()
 {
-	/*if (this->transform == nullptr) {
-		this->transform = (Transformable*)this->gameObject
-			->getComponent(TRANSFORMABLE);
-	}
 
 	vec3 currentPos = this->transform->getTranslate();
-	if (currentPos == this->points[currentPoint]) {
-		if (currentPoint + 1 >= sizeof this->points)
+	vec3 nextPos = this->points[currentPoint];
+	float dist = distance(currentPos, nextPos);
+	if (dist<=1) {
+		if (currentPoint + 1 > 8)
 			currentPoint = 0;
 		else
 			currentPoint += 1;
 	}
 
+	this->rigidBody->velocity = 
+		this->seekPoint(this->points[currentPoint]);
 
-	this->seekPoint(this->points[currentPoint]);*/
+	
 }
 
 vec3 UfoBehavior::seekPoint(vec3 target)
@@ -767,5 +778,5 @@ vec3 UfoBehavior::seekPoint(vec3 target)
 
 
 	newVelosity = normalize(newVelosity) * maxVelosity;
-	return vec3();
+	return newVelosity;
 }

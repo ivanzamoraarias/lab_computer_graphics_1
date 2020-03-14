@@ -1,6 +1,13 @@
 #Ivan's work description
-This is a branch from the computer graphics(TDA362/DIT223) lab for anoher class called Game Engines Architecture.
-I am ussing the base rendering engine to create a complete game engine in 3D
+This is a branch from the computer graphics(TDA362/DIT223) lab for the final project at Game Engines Architecture.
+I am ussing the base rendering engine to create a complete game engine in 3D.
+
+To open the project in visual studio please go to this file:
+build\lab5-rendertotexture\lab5-rendertotecture.sln
+
+If you want to tun the exe file please go to 
+bin\lab5-rendertotexture.exe
+
 
 #Original Description
 This is the repository for the tutorials of the course TDA362/DIT223 Computer Graphics given at Chalmers University of
