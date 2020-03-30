@@ -12,6 +12,9 @@ layout(location = 2) in vec2 texCoordIn;
 uniform mat4 normalMatrix;
 uniform mat4 modelViewMatrix;
 uniform mat4 modelViewProjectionMatrix;
+uniform bool isBilBoard;
+uniform vec3 offset;
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Output to fragment shader
@@ -22,7 +25,11 @@ out vec3 viewSpacePosition;
 
 void main()
 {
-	gl_Position = modelViewProjectionMatrix * vec4(position, 1);
+	if(isBilBoard)
+		gl_Position =  vec4(offset + 0.01* position, 1);
+	else
+		gl_Position = modelViewProjectionMatrix * vec4(position, 1);
+
 	viewSpaceNormal = (normalMatrix * vec4(normalIn, 0.0)).xyz;
 	viewSpacePosition = (modelViewMatrix * vec4(position, 1)).xyz;
 	texCoord = texCoordIn;
